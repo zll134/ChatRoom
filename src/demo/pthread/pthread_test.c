@@ -2,31 +2,36 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <signal.h>
+
 #define THREAD1_RUN_TIMES 8
-void *thread1_run(void *val)
+#define THREAD_NUM 2
+
+pthread_t g_thread_id[THREAD_NUM];
+
+void *thread_run(void *val)
 {
-    for (int i = 0; i < THREAD1_RUN_TIMES; i++) {
-        printf("thread%s run~~~, count:%d\n", (char *)val, i + 1);
+    pthread_t tid = *(pthread_t *)val;
+    int index = 0;
+    while (1) {
+        printf("thread%d run~~~, count:%d\n", tid, index + 1);
         sleep(1);
-    }
+        index++;
+    }   
     return NULL;
 }
 int main()
 {
-    printf("-----");
-    pthread_t tid1 = 0;
-    int ret = pthread_create(&tid1, NULL, thread1_run, "1");
-    if (ret != 0) {
+    for (int i = 0; i < THREAD_NUM; i++) {
+        int ret = pthread_create(&g_thread_id[i], NULL, thread_run, "1");
+        if (ret != 0) {
          printf("%s", "create pthread failed\n");
     }
-    int count = 0;
+    signal(SIGALRM, signal_func);
+    alarm(10);
+
     while (1) {
-         printf("main thread run~, count:%d\n", count);
-         sleep(1);
-         count++;
-         if (count > 10) {
-             break;
-         }
+        ;
     }
     return 0;
 }
