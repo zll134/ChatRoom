@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.5)
 
 # set the project name
-project (CodeLearn)
+project (ChatRoom)
 
 # set compiler
 set (CMAKE_C_COMPILER "gcc")
