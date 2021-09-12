@@ -28,9 +28,11 @@ cmake ：生成MakeFile
 
 make ：编译MakeFile生成二进制
 
+### 三、Cmake默认目录
 
+CMAKE_CURRENT_SOURCE_DIR  -- 当前CMakeLists.txt所在目录
 
-
+PROJECT_SOURCE_DIR  -- 当前工程根目录
 
 
 
