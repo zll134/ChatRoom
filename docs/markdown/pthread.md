@@ -32,5 +32,14 @@ int pthread_cond_timedwait(pthread_cond_t *cv, pthread_mutex_t *external_mutex, 
 
 /* 条件变量删除 */
 int pthread_cond_destroy(pthread_cond_t *cv);
+
+```
+
+3、命名
+
+```c
+/* 设置名字 */
+int pthread_setname_np(pthread_t thread, const char *name);
+int pthread_getname_np(pthread_t thread, char *name, size_t len);
 ```
 

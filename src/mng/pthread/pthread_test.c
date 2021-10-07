@@ -2,51 +2,31 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <unistd.h>
-#include <signal.h>
+#include "thread_pool.h"
 
-#define THREAD1_RUN_TIMES 8
-#define THREAD_NUM 2
+#define THREAD_NUM 5
+#define JOB_NUM 100
+int g_job_index[JOB_NUM] = {0};
 
-pthread_t g_thread_id[THREAD_NUM];
-pthread_cond_t g_cond;
-pthread_mutex_t g_mutex;
-
-void *thread_run1(void *val)
+void *thread_run(void *val)
 {
-    int count = 0;
-    while (1) {
-        printf("thread1 run~~~, count%d\n", count);
-        pthread_mutex_lock(&g_mutex);
-        pthread_cond_wait(&g_cond, &g_mutex);
-        pthread_mutex_unlock(&g_mutex);
-        count++;
-    }
-    return NULL;
-}
-
-void *thread_run2(void *val)
-{
-    int count = 0;
-    while (1) {
-        printf("thread2 run~~~, count%d\n", count);
-        pthread_mutex_lock(&g_mutex);
-        pthread_cond_wait(&g_cond, &g_mutex);
-        pthread_mutex_unlock(&g_mutex);
-        count++;
-    }
+    int index = *(int *)val;
+    printf("thread start run, index is %d\n", index);
+    sleep(1);
     return NULL;
 }
 
 int main()
 {
-    pthread_create(&g_thread_id[0], NULL, thread_run1, NULL);
-    pthread_detach(g_thread_id[0]);
+    thread_pool_t *pool = thread_pool_init(THREAD_NUM);
+    printf("create thread pool success\n");
+    for (int i = 0; i < JOB_NUM; i++) {
+        g_job_index[i] = i;
+        thread_pool_add_work(pool, thread_run, &g_job_index[i]);
+    }
 
-    pthread_create(&g_thread_id[1], NULL, thread_run2, NULL);
-    pthread_detach(g_thread_id[1]);
-
+    printf("add work to thread pool success\n");
     while (1) {
-        pthread_cond_signal(&g_cond);
         sleep(2);
     }
     return 0;
