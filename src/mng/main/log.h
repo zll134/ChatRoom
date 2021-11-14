@@ -13,9 +13,9 @@ typedef void (*crm_log_cb)(int severity, const char *log);
 void crm_set_log_callback(crm_log_cb cb);
 
 /* 提示日志接口 */
-void crm_diag_info(const char *fmt, ...);
+void diag_info(const char *fmt, ...);
 
 /* 错误日志接口 */
-void crm_diag_err(const char *fmt, ...);
+void diag_err(const char *fmt, ...);
 
 #endif

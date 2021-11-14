@@ -6,13 +6,13 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/epoll.h>
+#include "log.h"
 #include "thread_pool.h"
 
 #define THREAD_NUM 5
 #define JOB_NUM 10
 
-#define SERVER_IP "192.168.75.145"
-#define SERVER_PORT 8088
+#define SERVER_PORT 8089
 
 #define EPOLL_SIZE 15
 #define EPOLL_EVENT_SIZE 15
@@ -31,52 +31,52 @@ int main()
 {
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd == -1) {
-        printf("generate socket file failed\n");
+        diag_err("generate socket file failed");
         return -1;
     }
 
     struct sockaddr_in addr = {0};
     addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = inet_addr(SERVER_IP);
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
     addr.sin_port = htons(SERVER_PORT);
     if (bind(fd, (struct sockaddr *)&addr, sizeof(addr))) {
         printf("bind socket failed\n");
         return -1;
     }
     listen(fd, 5);
-    printf("listen fd success\n");
+    diag_info("listen fd success");
     int efd = epoll_create(EPOLL_SIZE);
     struct epoll_event ev = {0};
     ev.events = EPOLLIN;
     ev.data.fd = fd;
     if (epoll_ctl(efd, EPOLL_CTL_ADD, fd, &ev) == -1) {
-        printf("epoll_ctl: listen_sock");
+        diag_err("epoll_ctl: listen_sock");
         return 0;
     }
     while (1) {
         struct epoll_event events[EPOLL_EVENT_SIZE] = {0};
         int nfds = epoll_wait(efd, events, EPOLL_EVENT_SIZE, 1000);
         if (nfds < 0) {
-            printf("nfds < 0\n");
+            diag_err("nfds < 0\n");
             continue;
         }
         for (int i = 0; i < nfds; i++) {
             if (events[i].data.fd == fd) {
-                printf("start accept\n");
+                diag_info("start accept");
                 socklen_t addrlen = sizeof(addr);
                 int conn_fd = accept(fd, (struct sockaddr *)&addr, (socklen_t *)&addrlen);
                 if (conn_fd < 0) {
-                    printf("accept fd failed\n");
+                    diag_err("accept fd failed");
                     continue;
                 }
-                printf("accept fd success\n");
+                diag_info("accept fd success");
                 ev.events = EPOLLIN | EPOLLET;
                 ev.data.fd = conn_fd;
                 epoll_ctl(efd, EPOLL_CTL_ADD, conn_fd, &ev);
             } else {
                 char buf[1024] = {0};
                 read(events[i].data.fd, buf, sizeof(buf));
-                printf("read buf:%s\n", buf);
+                diag_info("read buf: %s", buf);
             }
         }
     }
