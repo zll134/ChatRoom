@@ -5,13 +5,17 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <sys/epoll.h>
 #include "thread_pool.h"
 
 #define THREAD_NUM 5
 #define JOB_NUM 10
 
-#define SERVER_IP "192.168.75.143"
+#define SERVER_IP "192.168.75.145"
 #define SERVER_PORT 8088
+
+#define EPOLL_SIZE 15
+#define EPOLL_EVENT_SIZE 15
 
 int g_job_index[JOB_NUM] = {0};
 
@@ -41,18 +45,40 @@ int main()
     }
     listen(fd, 5);
     printf("listen fd success\n");
+    int efd = epoll_create(EPOLL_SIZE);
+    struct epoll_event ev = {0};
+    ev.events = EPOLLIN;
+    ev.data.fd = fd;
+    if (epoll_ctl(efd, EPOLL_CTL_ADD, fd, &ev) == -1) {
+        printf("epoll_ctl: listen_sock");
+        return 0;
+    }
     while (1) {
-        printf("start accept\n");
-        socklen_t addrlen = sizeof(addr);
-        int new_fd = accept(fd, (struct sockaddr *)&addr, (socklen_t *)&addrlen);
-        if (new_fd < 0) {
-            printf("accept fd failed\n");
+        struct epoll_event events[EPOLL_EVENT_SIZE] = {0};
+        int nfds = epoll_wait(efd, events, EPOLL_EVENT_SIZE, 1000);
+        if (nfds < 0) {
+            printf("nfds < 0\n");
             continue;
         }
-        printf("accept fd success\n");
-        char buf[1024] = {0};
-        read(new_fd, buf, sizeof(buf));
-        printf("read buf:%s\n", buf);
+        for (int i = 0; i < nfds; i++) {
+            if (events[i].data.fd == fd) {
+                printf("start accept\n");
+                socklen_t addrlen = sizeof(addr);
+                int conn_fd = accept(fd, (struct sockaddr *)&addr, (socklen_t *)&addrlen);
+                if (conn_fd < 0) {
+                    printf("accept fd failed\n");
+                    continue;
+                }
+                printf("accept fd success\n");
+                ev.events = EPOLLIN | EPOLLET;
+                ev.data.fd = conn_fd;
+                epoll_ctl(efd, EPOLL_CTL_ADD, conn_fd, &ev);
+            } else {
+                char buf[1024] = {0};
+                read(events[i].data.fd, buf, sizeof(buf));
+                printf("read buf:%s\n", buf);
+            }
+        }
     }
     return 0;
 }
