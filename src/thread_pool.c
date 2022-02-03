@@ -196,3 +196,8 @@ void thread_pool_destroy(thread_pool_t *pool)
     free(pool);
     return;
 }
+
+uint32_t thread_pool_get_worker_num(thread_pool_t *pool)
+{
+    return pool->threads_num;
+}

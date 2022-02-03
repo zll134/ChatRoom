@@ -22,4 +22,7 @@ void thread_pool_add_work(thread_pool_t *pool, thread_op op, void *args);
 /* 销毁线程池 */
 void thread_pool_destroy(thread_pool_t *pool);
 
+/* 获取线程池内线程数量 */
+uint32_t thread_pool_get_worker_num(thread_pool_t *pool);
+
 #endif

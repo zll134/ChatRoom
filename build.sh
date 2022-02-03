@@ -2,14 +2,17 @@
 
 project_path=$(pwd)
 source $project_path/build/build_src.sh
+source $project_path/build/build_test.sh
 
-while getopts 'ic' opt;
+while getopts 'ict' opt;
 do
     case $opt in
         i)
-            increment=1;;
+            increment=1;; # 表示增量编译
         c)
-            clean_flag=1;;
+            clean_flag=1;; # 表示清理之前的编译结果
+        t)
+            build_test=1;; # 表示编译测试的二进制模块
         ?)
             ;;   
     esac
@@ -24,4 +27,8 @@ if [ -z $increment ];then
     [ -d $project_path/output ] && rm -rf $project_path/output
 fi
 
-build $project_path
+if [ ! -z $build_test ]; then
+    build_test  $project_path
+else
+    build $project_path
+fi

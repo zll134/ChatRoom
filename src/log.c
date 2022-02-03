@@ -3,11 +3,9 @@
  * Description:  日志模块管理
  * create time: 2021.10.31
  ********************************/
-
-#include "log.h"
-
 #include <stdio.h>
 #include <stdarg.h>
+#include "log.h"
 
 enum {
     CRM_LOG_INFO,
