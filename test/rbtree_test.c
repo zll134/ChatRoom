@@ -9,7 +9,9 @@
 #include "log.h"
 #include "rbtree.h"
 
-#define MAX_SIZE 20
+#define MAX_SIZE 100
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
+
 static int value_cmp(void *data1, void *data2)
 {
     return *(int *)data1 - *(int *)data2;
@@ -50,11 +52,12 @@ static void values_shuffle(int *values, int len)
 
 static void values_insert(rbtree_t *tree, int *values, int len)
 {
-    diag_info("start insert node");
+    diag_info("start insert values.");
     for (int i = 0; i < len; i++) {
+        diag_info("start insert value %d.", values[i]);
         rbtree_insert(tree, (void *)&values[i]);
         rbtree_dump(tree, tree->root, 0);
-        diag_info("=====");
+
     }
 }
 
@@ -62,13 +65,12 @@ void values_delete(rbtree_t *tree, int *values, int len)
 {
     diag_info("start delete node");
     for (int i = 0; i < len; i++) {
+        diag_info("start delete value %d.", values[i]);
         rbtree_dump(tree, tree->root, 0);
         rbtree_delete(tree, (void *)&values[i]);
-        diag_info("=====");
     }
 }
 
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 int main()
 {
     struct rbtree_ops_s ops = {
