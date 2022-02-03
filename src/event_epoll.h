@@ -8,9 +8,8 @@
 
 int event_epoll_init(void);
 
-int event_epoll_add(int efd, int fd, uint32_t events);
+int event_epoll_add(int fd, uint32_t events);
 
-int event_epoll_wait(int efd, struct epoll_event *events,
-    int size, int timeout);
+int event_epoll_wait(struct epoll_event *events, int size, int timeout);
 
 #endif

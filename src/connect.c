@@ -13,8 +13,7 @@
 #include <sys/epoll.h>
 #include "log.h"
 #include "thread_pool.h"
-#include "event_epll.h"
-
+#include "event_epoll.h"
 
 #define SERVER_PORT 8089
 #define EPOLL_EVENT_SIZE 20
@@ -49,26 +48,26 @@ int connect_init(void)
         diag_err("init socket listener failed");
         return -1;
     }
+    diag_info("init socket listener success. fd %d", lfd);
 
     event_epoll_init();
-    event_epoll_add(efd, lfd, EPOLLIN);
+    event_epoll_add(lfd, EPOLLIN);
 
     while (1) {
         struct epoll_event events[EPOLL_EVENT_SIZE] = {0};
-        int nfds = event_epoll_wait(efd, events, EPOLL_EVENT_SIZE, 0);
+        int nfds = event_epoll_wait(events, EPOLL_EVENT_SIZE, -1);
         if (nfds < 0) {
-            diag_err("nfds < 0\n");
+            diag_err("event epoll wait failed. nfds %d.", nfds);
             continue;
         }
         for (int i = 0; i < nfds; i++) {
             if (events[i].data.fd == lfd) {
-                socklen_t addrlen = sizeof(addr);
-                int conn_fd = accept(lfd, (struct sockaddr *)&addr, (socklen_t *)&addrlen);
+                int conn_fd = accept(lfd, NULL, 0);
                 if (conn_fd < 0) {
                     diag_err("accept fd failed");
                     continue;
                 }
-                event_epoll_add(efd, conn_fd, EPOLLIN | EPOLLET);
+                event_epoll_add(conn_fd, EPOLLIN | EPOLLET);
             } else {
                 char buf[1024] = {0};
                 read(events[i].data.fd, buf, sizeof(buf));
