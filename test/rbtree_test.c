@@ -9,7 +9,7 @@
 #include "log.h"
 #include "rbtree.h"
 
-#define MAX_SIZE 100
+#define MAX_SIZE 1000
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
 static int value_cmp(void *data1, void *data2)
