@@ -17,13 +17,6 @@ static int value_cmp(void *data1, void *data2)
     return *(int *)data1 - *(int *)data2;
 }
 
-static void *value_dup(void *data)
-{
-    int *data_dup = (int *)malloc(sizeof(int));
-    *data_dup = *(int *)data;
-    return data_dup;
-}
-
 static char g_dump_str[32] = {0};
 static const char *value_dump(void *data)
 {
@@ -57,7 +50,6 @@ static void values_insert(rbtree_t *tree, int *values, int len)
         diag_info("start insert value %d.", values[i]);
         rbtree_insert(tree, (void *)&values[i]);
         rbtree_dump(tree, tree->root, 0);
-
     }
 }
 
@@ -75,7 +67,6 @@ int main()
 {
     struct rbtree_ops_s ops = {
         value_cmp,
-        value_dup,
         value_dump
     };
 

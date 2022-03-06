@@ -8,18 +8,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <string.h>
 #include "log.h"
 
 #define RED 0
 #define BLACK 1
-
-struct rbtree_node_s {
-    rbtree_node_t *parent;
-    rbtree_node_t *left;
-    rbtree_node_t *right;
-    uint8_t color;
-    void *data;
-};
 
 static inline void rbt_set_color(rbtree_node_t *node, uint8_t color)
 {
@@ -139,7 +132,7 @@ static void rbtree_left_rotate(rbtree_t *tree, rbtree_node_t *node)
     node->parent = tmp;
 }
 
-static rbtree_node_t *rbt_create_node(rbtree_t *tree, void *data)
+static rbtree_node_t *rbt_create_node(rbtree_t *tree, void *data, int len)
 {
     rbtree_node_t *node = (rbtree_node_t *)malloc(sizeof(*node));
     if (node == NULL) {
@@ -147,13 +140,18 @@ static rbtree_node_t *rbt_create_node(rbtree_t *tree, void *data)
         return NULL;
     }
     node->color = RED;
-    node->data = tree->ops.dup(data);
+    node->data = (void *)malloc(sizeof(len));
+    memcpy(node->data, data, len);
     return node;
 }
 
-int rbtree_insert(rbtree_t *tree, void *data)
+int rbtree_insert(rbtree_t *tree, void *data, int len)
 {
-    rbtree_node_t *node = rbt_create_node(tree, data);
+    rbtree_node_t *node = rbt_create_node(tree, data, len);
+    if (node == NULL) {
+        diag_err("create node error.");
+        return -1;
+    }
 
     /* 节点直接插入树 */
     rbtree_insert_node(tree, node);
@@ -390,9 +388,9 @@ void rbtree_delete_rebalence(rbtree_t *tree, rbtree_node_t *node)
     rbt_set_color(node, BLACK);
 }
 
-int rbtree_delete(rbtree_t *tree, void *data)
+int rbtree_delete(rbtree_t *tree, void *key)
 {
-    rbtree_node_t *node = rbtree_find(tree, data);
+    rbtree_node_t *node = rbtree_find(tree, key);
     if (node == NULL) {
         return -1;
     }
@@ -419,4 +417,12 @@ void rbtree_dump(rbtree_t *tree, rbtree_node_t *node, int depth)
 
     rbtree_dump(tree, node->left, depth + 1);
     rbtree_dump(tree, node->right, depth + 1);
+}
+
+void rbtree_destroy(rbtree_t *tree)
+{
+    /* 待实现删除每个节点 */
+    free(tree->sentinel);
+    free(tree);
+    return;
 }
