@@ -30,6 +30,7 @@ int main(int argc, char **argv)
              return -1;
         }
         diag_info("client recv %s\n", buf);
+
     }
     return 0;
 }

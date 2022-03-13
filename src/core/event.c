@@ -57,7 +57,6 @@ void event_run_loop(event_loop_t *loop)
 {
     while (!loop->stopped) {
         struct epoll_event ees[EPOLL_EVENT_SIZE];
-        diag_info("new loop with efd %d timeout %d", loop->efd, loop->timeout);
         int n = epoll_wait(loop->efd, ees, EPOLL_EVENT_SIZE, loop->timeout);
         if (n < 0) {
             diag_err("epoll wait failed");
@@ -73,8 +72,7 @@ void event_run_loop(event_loop_t *loop)
             }
 
             event_t *event = (event_t *)node->data;
-            diag_info("read new event, index %d, fd %d, mask %u", i, event->fd, event->mask);
-            event->proc(event->fd, event->mask, event->data);
+            event->proc(loop, event->fd, event->mask, event->data);
         }
     }
 }
@@ -93,7 +91,7 @@ int event_add(event_loop_t *loop, int fd, uint32_t mask,
     struct epoll_event ev = {0};
     ev.events = mask;
     ev.data.fd = fd;
-    if (epoll_ctl(loop->efd, EPOLL_CTL_ADD, fd, &ev) == -1) {
+    if (epoll_ctl(loop->efd, EPOLL_CTL_ADD, fd, &ev) != 0) {
         diag_err("epoll add failed");
         return -1;
     }
@@ -107,9 +105,10 @@ int event_del(event_loop_t *loop, int fd)
     };
     rbtree_delete(loop->events, &key);
 
-    if (epoll_ctl(loop->efd, EPOLL_CTL_DEL, fd, NULL) == -1) {
+    if (epoll_ctl(loop->efd, EPOLL_CTL_DEL, fd, NULL) != 0) {
         diag_err("epoll del failed");
         return -1;
     }
+    close(fd);
     return 0;
 }

@@ -1,6 +1,12 @@
+/* ********************************
+ * Author:       Zhanglele
+ * Description:  网络相关接口封装
+ * create time: 2022.03.12
+ ********************************/
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <fcntl.h>
 #include "log.h"
 
 int net_create_listener(int port)
@@ -44,4 +50,19 @@ int net_connect(const char *ip, int port)
         return -1;
     }
     return fd;
+}
+
+int net_set_nonblock(int fd)
+{
+    int flags = fcntl(fd, F_GETFL);
+    if (flags == -1) {
+        diag_err("get file flags failed");
+        return -1;
+    }
+    flags = flags | O_NONBLOCK;
+    if (fcntl(fd, F_SETFL, flags) == -1) {
+        diag_err("fcntl set nonblock failed");
+        return -1;
+    }
+    return 0;
 }

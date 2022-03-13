@@ -48,12 +48,12 @@ static void values_insert(rbtree_t *tree, int *values, int len)
     diag_info("start insert values.");
     for (int i = 0; i < len; i++) {
         diag_info("start insert value %d.", values[i]);
-        rbtree_insert(tree, (void *)&values[i]);
+        rbtree_insert(tree, (void *)&values[i], sizeof(int));
         rbtree_dump(tree, tree->root, 0);
     }
 }
 
-void values_delete(rbtree_t *tree, int *values, int len)
+static void values_delete(rbtree_t *tree, int *values, int len)
 {
     diag_info("start delete node");
     for (int i = 0; i < len; i++) {
@@ -63,7 +63,7 @@ void values_delete(rbtree_t *tree, int *values, int len)
     }
 }
 
-int main()
+static int test_random_insert_and_delete()
 {
     struct rbtree_ops_s ops = {
         value_cmp,
@@ -76,8 +76,13 @@ int main()
     int len =  ARRAY_SIZE(values);
     values_init(values, len);
     values_insert(tree, values, len);
-
     values_shuffle(values, len);
     values_delete(tree, values, len);
+    return 0;
+}
+
+int main()
+{
+    test_random_insert_and_delete();
     return 0;
 }

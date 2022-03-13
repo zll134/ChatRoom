@@ -20,26 +20,24 @@ struct {
     event_loop_t *loop; /* epoll循环 */
 } g_server;
 
-static void accept_event_proc(int fd, uint32_t mask, void *data)
+static void accept_event_proc(event_loop_t *loop, int fd, uint32_t mask, void *data)
 {
-    diag_info("new rd event with fd %d", fd);
-    if (mask & EPOLLIN) {
-        diag_info("data in");
-        char buf[1024] = {0};
-        int len = read(fd, buf, sizeof(buf));
-        if (len == -1) {
-             diag_err("read error");
-             return;
-        }
-        diag_info("server recev data buf", buf);
+    char buf[1024] = {0};
+    int len = read(fd, buf, sizeof(buf));
+    if (len == -1) {
+        diag_err("read buff error");
+        return;
+    } else if (len == 0) {
+        diag_info("client close fd");
+        close(fd);
+        event_del(loop, fd);
+        return;
     }
-
-    if (mask & EPOLLRDHUP) {
-        diag_info("data hup");
-    }
+    diag_info("server recev data buf", buf);
+    write(fd, buf, sizeof(buf));
 }
 
-static void socket_event_proc(int fd, uint32_t mask, void *data)
+static void socket_event_proc(event_loop_t *loop, int fd, uint32_t mask, void *data)
 {
     int conn_fd = accept(fd, NULL, 0);
     diag_info("new client connet fd %d connfd %d", fd, conn_fd);
@@ -47,7 +45,7 @@ static void socket_event_proc(int fd, uint32_t mask, void *data)
         diag_err("accept fd failed");
         return;
     }
-    event_add(g_server.loop, conn_fd, EPOLLIN | EPOLLRDHUP,
+    event_add(g_server.loop, conn_fd, EPOLLIN,
         accept_event_proc, NULL);
 }
 
@@ -58,6 +56,8 @@ int connect_init(void)
         diag_err("init socket listener failed");
         return -1;
     }
+
+    net_set_nonblock(lfd);
     diag_info("init socket listener success. fd %d", lfd);
     g_server.loop = event_create_loop();
     event_add(g_server.loop, lfd, EPOLLIN, socket_event_proc, NULL);

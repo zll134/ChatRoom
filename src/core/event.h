@@ -10,13 +10,6 @@
 #include <stdint.h>
 #include "rbtree.h"
 
-typedef void (*ev_proc_cb)(int fd, uint32_t mask, void *data);
-typedef struct {
-    int fd;
-    uint32_t mask;
-    void *data; /* 局部数据 */
-    ev_proc_cb proc; /* 事件回调处理函数 */
-} event_t;
 
 typedef struct {
     int efd; /* 创建epoll的文件描述符 */
@@ -24,6 +17,15 @@ typedef struct {
     int timeout; /* epoll超时事件 */
     rbtree_t *events; /* 红黑树进行事件的管理 */
 } event_loop_t;
+
+typedef void (*ev_proc_cb)(event_loop_t *loop, int fd, uint32_t mask, void *data);
+typedef struct {
+    int fd;
+    uint32_t mask;
+    void *data; /* 局部数据 */
+    ev_proc_cb proc; /* 事件回调处理函数 */
+} event_t;
+
 
 /* 创建epoll循环 */
 event_loop_t *event_create_loop(void);
