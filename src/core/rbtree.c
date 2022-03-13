@@ -8,18 +8,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <string.h>
 #include "log.h"
 
 #define RED 0
 #define BLACK 1
-
-struct rbtree_node_s {
-    rbtree_node_t *parent;
-    rbtree_node_t *left;
-    rbtree_node_t *right;
-    uint8_t color;
-    void *data;
-};
 
 static inline void rbt_set_color(rbtree_node_t *node, uint8_t color)
 {
@@ -99,9 +92,9 @@ static void rbtree_right_rotate(rbtree_t *tree, rbtree_node_t *node)
     if (node == tree->root) {
         tree->root = tmp;
     } else if (node == node->parent->left){
-        node->parent->left = node;
+        node->parent->left = tmp;
     } else {
-        node->parent->right = node;
+        node->parent->right = tmp;
     }
 
     tmp->right = node;
@@ -139,7 +132,7 @@ static void rbtree_left_rotate(rbtree_t *tree, rbtree_node_t *node)
     node->parent = tmp;
 }
 
-static rbtree_node_t *rbt_create_node(rbtree_t *tree, void *data)
+static rbtree_node_t *rbt_create_node(rbtree_t *tree, void *data, int len)
 {
     rbtree_node_t *node = (rbtree_node_t *)malloc(sizeof(*node));
     if (node == NULL) {
@@ -147,13 +140,18 @@ static rbtree_node_t *rbt_create_node(rbtree_t *tree, void *data)
         return NULL;
     }
     node->color = RED;
-    node->data = tree->ops.dup(data);
+    node->data = (void *)malloc(sizeof(len));
+    memcpy(node->data, data, len);
     return node;
 }
 
-int rbtree_insert(rbtree_t *tree, void *data)
+int rbtree_insert(rbtree_t *tree, void *data, int len)
 {
-    rbtree_node_t *node = rbt_create_node(tree, data);
+    rbtree_node_t *node = rbt_create_node(tree, data, len);
+    if (node == NULL) {
+        diag_err("create node error.");
+        return -1;
+    }
 
     /* 节点直接插入树 */
     rbtree_insert_node(tree, node);
@@ -285,7 +283,7 @@ rbtree_node_t *rbtree_delete_node(rbtree_t *tree, rbtree_node_t *node)
     if (subst == tree->root) {
         tree->root = temp;
         rbt_set_color(temp, BLACK);
-        rbtree_node_free(subst);
+        rbtree_node_free(node);
         return NULL;
     }
 
@@ -333,66 +331,66 @@ rbtree_node_t *rbtree_delete_node(rbtree_t *tree, rbtree_node_t *node)
     return temp;
 }
 
-void rbtree_delete_rebalence(rbtree_t *tree, rbtree_node_t *tmp)
+void rbtree_delete_rebalence(rbtree_t *tree, rbtree_node_t *node)
 {
     /* fix red black tree*/
-    while ((tmp != tree->root) && (!rbt_is_red(tmp))) {
-        if (tmp == tmp->parent->left) {
-            rbtree_node_t *sibling = tmp->parent->right;
+    while ((node != tree->root) && (!rbt_is_red(node))) {
+        if (node == node->parent->left) {
+            rbtree_node_t *sibling = node->parent->right;
             if (rbt_is_red(sibling)) {
                 rbt_set_color(sibling, BLACK);
-                rbt_set_color(tmp->parent, RED);
-                rbtree_left_rotate(tree, tmp->parent);
-                sibling = tmp->parent->right;
+                rbt_set_color(node->parent, RED);
+                rbtree_left_rotate(tree, node->parent);
+                sibling = node->parent->right;
             }
             if (!rbt_is_red(sibling->left) && !rbt_is_red(sibling->right)) {
                 rbt_set_color(sibling, RED);
-                tmp = tmp->parent;
+                node = node->parent;
             } else {
                 if (!rbt_is_red(sibling->right)) {
                     rbt_set_color(sibling, RED);
                     rbt_set_color(sibling->left, BLACK);
                     rbtree_right_rotate(tree, sibling);
-                    sibling = tmp->parent->right;
+                    sibling = node->parent->right;
                 }
-                sibling->color = tmp->parent->color;
+                sibling->color = node->parent->color;
                 rbt_set_color(sibling->right, BLACK);
-                rbt_set_color(tmp->parent, BLACK);
-                rbtree_left_rotate(tree, tmp->parent);
-                tmp = tree->root;
+                rbt_set_color(node->parent, BLACK);
+                rbtree_left_rotate(tree, node->parent);
+                node = tree->root;
             }
         } else {
-            rbtree_node_t *sibling = tmp->parent->left;
+            rbtree_node_t *sibling = node->parent->left;
             if (rbt_is_red(sibling)) {
                 rbt_set_color(sibling, BLACK);
-                rbt_set_color(tmp->parent, RED);
-                rbtree_right_rotate(tree, tmp->parent);
-                sibling = tmp->parent->left;
+                rbt_set_color(node->parent, RED);
+                rbtree_right_rotate(tree, node->parent);
+                sibling = node->parent->left;
             }
             if (!rbt_is_red(sibling->left) && !rbt_is_red(sibling->right)) {
                 rbt_set_color(sibling, RED);
-                tmp = tmp->parent;
+                node = node->parent;
             } else {
                 if (!rbt_is_red(sibling->left)) {
                     rbt_set_color(sibling, RED);
                     rbt_set_color(sibling->right, BLACK);
                     rbtree_left_rotate(tree, sibling);
-                    sibling = tmp->parent->left;
+                    sibling = node->parent->left;
                 }
-                sibling->color = tmp->parent->color;
+                sibling->color = node->parent->color;
                 rbt_set_color(sibling->left, BLACK);
-                rbt_set_color(tmp->parent, BLACK);
-                rbtree_right_rotate(tree, tmp->parent);
-                tmp = tree->root;
+                rbt_set_color(node->parent, BLACK);
+                rbtree_right_rotate(tree, node->parent);
+                node = tree->root;
             }
         }
     }
-    rbt_set_color(tmp, BLACK);
+    rbt_set_color(node, BLACK);
 }
 
-int rbtree_delete(rbtree_t *tree, void *data)
+int rbtree_delete(rbtree_t *tree, void *key)
 {
-    rbtree_node_t *node = rbtree_find(tree, data);
+    rbtree_node_t *node = rbtree_find(tree, key);
     if (node == NULL) {
         return -1;
     }
@@ -419,4 +417,12 @@ void rbtree_dump(rbtree_t *tree, rbtree_node_t *node, int depth)
 
     rbtree_dump(tree, node->left, depth + 1);
     rbtree_dump(tree, node->right, depth + 1);
+}
+
+void rbtree_destroy(rbtree_t *tree)
+{
+    /* 待实现删除每个节点 */
+    free(tree->sentinel);
+    free(tree);
+    return;
 }
