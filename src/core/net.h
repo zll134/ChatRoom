@@ -12,5 +12,6 @@ int net_create_listener(int port);
 /* 创建socket并连接tcp*/
 int net_connect(const char *ip, int port);
 
+/* 设置socket为nonblocking */
 int net_set_nonblock(int fd);
 #endif
