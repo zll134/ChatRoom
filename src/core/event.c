@@ -6,6 +6,7 @@
 #include "event.h"
 #include <stdint.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <sys/epoll.h>
 #include "log.h"
 #include "rbtree.h"

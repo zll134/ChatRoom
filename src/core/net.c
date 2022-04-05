@@ -3,6 +3,7 @@
  * Description:  网络相关接口封装
  * create time: 2022.03.12
  ********************************/
+#include <stdlib.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -64,5 +65,51 @@ int net_set_nonblock(int fd)
         diag_err("fcntl set nonblock failed");
         return -1;
     }
+    return 0;
+}
+
+int net_get_peer_addr(int fd, char *ip, int len, uint16_t *port)
+{
+    if ((ip == NULL) || (port == NULL)) {
+        diag_err("input para is invalid");
+        return -1;
+    }
+
+    struct sockaddr_in peer_addr = {0};
+    socklen_t peer_addr_len = sizeof(peer_addr);
+    if (getpeername(fd, (struct sockaddr*)&peer_addr, &peer_addr_len) == -1) {
+        diag_err("get peer name failed");
+        return -1;
+    }
+
+    if (peer_addr.sin_family != AF_INET) {
+        diag_err("server only support ipv4.");
+        return -1;
+    }
+    *port = peer_addr.sin_port;
+    inet_ntop(AF_INET,(void*)&(peer_addr.sin_addr), ip, len);
+    return 0;
+}
+
+int net_get_address(int fd, char *ip, int len, uint16_t *port)
+{
+    if ((ip == NULL) || (port == NULL)) {
+        diag_err("input para is invalid");
+        return -1;
+    }
+
+    struct sockaddr_in addr = {0};
+    socklen_t addr_len = sizeof(addr);
+    if (getsockname(fd, (struct sockaddr*)&addr, &addr_len) == -1) {
+        diag_err("get peer name failed");
+        return -1;
+    }
+
+    if (addr.sin_family != AF_INET) {
+        diag_err("server only support ipv4.");
+        return -1;
+    }
+    *port = addr.sin_port;
+    inet_ntop(AF_INET,(void*)&(addr.sin_addr), ip, len);
     return 0;
 }

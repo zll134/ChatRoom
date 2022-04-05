@@ -13,8 +13,8 @@ typedef struct list_ops_s {
 typedef struct list_node_s {
     struct list_node_s *prev;
     struct list_node_s *next;
-    void *data;
     int len;
+    char data[0];
 } list_node_t;
 
 typedef struct {
@@ -27,24 +27,35 @@ typedef struct {
 /* 创建链表对象 */
 list_t *list_create(struct list_ops_s *ops);
 
-/* 将节点插入链表头 */
+/* 在链表首部插入链表节点 */
 int list_add_head(list_t *list, void *value, int len);
 
-/* 将链表头插入链表尾部 */
+/* 在链表尾部插入链表节点 */
 int list_add_tail(list_t *list, void *value, int len);
 
-/* 根据key查找链表节点 */
-list_node_t *list_find(list_t *list, void *key);
+/* 根据key查找链表节点中存储数据 */
+void *list_find(list_t *list, void *key);
 
-/* 删除具体的链表节点 */
+/* 删除链表节点 */
 int list_delete(list_t *list, list_node_t *node);
 
-/* 删除链表首部的节点 */
+/* 删除链表首部的链表节点 */
 int list_del_head(list_t *list);
 
-/* 删除链表尾部的节点 */
+/* 删除链表尾部的链表节点 */
 int list_del_tail(list_t *list);
 
 /* 释放链表对象 */
 void list_destroy(list_t *list);
+
+/* 返回链表第一个节点中存储中的数据 */
+void *list_first(list_t *list);
+
+/*
+ * 返回下一个节点中的数据。
+ * @data: 链表节点的数据，使用者需要确保入参的正确性
+ * @return: 下一个链表节点中的数据
+ */
+void *list_next(list_t *list, void *data);
+
 #endif
