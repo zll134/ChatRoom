@@ -1,4 +1,8 @@
-
+/* ********************************
+ * Author:       Zhanglele
+ * Description:  服务端程序
+ * create time: 2022.4.5
+ ********************************/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -45,7 +49,7 @@ static void login_msg_proc(int fd, void *buf, int len)
 {
     msg_login_req_t *login_req = (msg_login_req_t *)buf;
     client_t client = {0};
-    diag_info("recv login req, name %s", login_req->name);
+    diag_info("recv login msg, name %s", login_req->name);
     strcpy(client.name, login_req->name);
     msg_login_resp_t login_resp = {0};
     if (list_find(g_server.clients, &client) != NULL) {
@@ -56,15 +60,12 @@ static void login_msg_proc(int fd, void *buf, int len)
     }
     client.fd = fd;
     list_add_head(g_server.clients, &client, sizeof(client));
-
-    login_resp.result = LOGIN_SUCCESS;
-    msg_send(fd, MSG_LOGIN, &login_resp, sizeof(login_resp));
 }
 
 static void chat_msg_proc(int fd, void *buf, int len)
 {
     msg_chat_req_t *chat_req = (msg_chat_req_t *)buf;
-    diag_info("has recv chat msg, name %s, content %s", chat_req->name, chat_req->buf);
+    diag_info("recv chat msg, name %s, content %s", chat_req->name, chat_req->buf);
     void *ptr = list_first(g_server.clients);
     while (ptr != NULL) {
         client_t *client = (client_t *)ptr;
@@ -91,6 +92,7 @@ static void receive_cb(event_loop_t *loop, int fd, uint32_t mask, void *data)
     }
 
     msg_hdr_t *hdr = (msg_hdr_t *)buf;
+    diag_info("recv msg, msg type %d msg len %d", hdr->type, hdr->len);
     switch (hdr->type) {
         case MSG_LOGIN:
             login_msg_proc(fd, hdr + 1, hdr->len);

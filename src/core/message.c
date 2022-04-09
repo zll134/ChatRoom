@@ -15,6 +15,11 @@
 
 int msg_send(int fd, uint8_t type, void *data, uint32_t len)
 {
+    if ((data == NULL) || (len == 0)) {
+        diag_err("input data param is invalid");
+        return -1;
+    }
+    diag_info("send msg with type %u", type);
     void *msg = (void *)malloc(sizeof(msg_hdr_t) + len);
     if (msg == NULL) {
         return -1;
@@ -22,11 +27,8 @@ int msg_send(int fd, uint8_t type, void *data, uint32_t len)
     msg_hdr_t *hdr = (msg_hdr_t *)msg;
     hdr->type = type;
     hdr->len = len;
-    if (data) {
-        memcpy(hdr + 1, data, len);
-        len = 0;
-    }
-    
+    memcpy(hdr + 1, data, len);
+
     if (write(fd, msg, sizeof(msg_hdr_t) + len) == -1) {
         free(msg);
         diag_err("send msg failed, fd %d. reason %s.", fd, strerror(errno));
