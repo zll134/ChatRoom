@@ -138,6 +138,7 @@ void *thread_do(void *args)
         pool->worker_num--;
         free(job);
     }
+    return NULL;
 }
 
 static void threads_init(thread_pool_t *pool, uint32_t threads_num)

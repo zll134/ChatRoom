@@ -13,7 +13,7 @@
 
 ### 二、待完成计划
 
-- list、queue实现
+- queue实现
 - rbtree实现完善
 - 测试模块完善
 - client server完成通信

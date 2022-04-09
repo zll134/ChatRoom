@@ -1,6 +1,7 @@
 set(dirs ${CMAKE_CURRENT_SOURCE_DIR}/core
         ${CMAKE_CURRENT_SOURCE_DIR}/client
         ${CMAKE_CURRENT_SOURCE_DIR}/server
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 include_directories(${dirs})
 
