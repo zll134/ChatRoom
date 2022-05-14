@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <time.h>
 #include "log.h"
+#include "unittest.h"
 #include "rbtree.h"
 
 #define MAX_SIZE 1000
@@ -45,29 +46,23 @@ static void values_shuffle(int *values, int len)
 
 static void values_insert(rbtree_t *tree, int *values, int len)
 {
-    diag_info("start insert values.");
     for (int i = 0; i < len; i++) {
-        diag_info("start insert value %d.", values[i]);
         rbtree_insert(tree, (void *)&values[i], sizeof(int));
-        rbtree_dump(tree, tree->root, 0);
     }
 }
 
 static void values_delete(rbtree_t *tree, int *values, int len)
 {
-    diag_info("start delete node");
     for (int i = 0; i < len; i++) {
-        diag_info("start delete value %d.", values[i]);
-        rbtree_dump(tree, tree->root, 0);
         rbtree_delete(tree, (void *)&values[i]);
     }
 }
 
-static int test_random_insert_and_delete()
+static void test_random_insert_and_delete()
 {
     struct rbtree_ops_s ops = {
         value_cmp,
-        value_dump
+        NULL
     };
 
     rbtree_t *tree = rbtree_create(&ops);
@@ -78,11 +73,13 @@ static int test_random_insert_and_delete()
     values_insert(tree, values, len);
     values_shuffle(values, len);
     values_delete(tree, values, len);
-    return 0;
 }
 
 int main()
 {
-    test_random_insert_and_delete();
+    unit_test_t tests[] = {
+         unit_test(test_random_insert_and_delete),
+    };
+    run_tests(tests, sizeof(tests) / sizeof(tests[0]));
     return 0;
 }

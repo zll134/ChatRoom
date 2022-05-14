@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include "log.h"
 #include "list.h"
+#include "unittest.h"
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
@@ -18,7 +19,7 @@ int value_cmp(void *data1, void *data2)
     return *(int *)data1 > *(int *)data2;
 }
 
-int test_basic_list()
+void test_basic_list()
 {
     int ret;
     struct list_ops_s ops = {
@@ -27,7 +28,7 @@ int test_basic_list()
     list_t *list = list_create(&ops);
     if (list == NULL) {
         diag_err("list create failed");
-        return -1;
+        return;
     }
 
     /* 添加链表节点 */
@@ -35,12 +36,12 @@ int test_basic_list()
         ret = list_add_head(list, &g_values[i], sizeof(g_values[i]));
         if (ret != 0) {
             diag_err("list add head failed");
-            return -1;
+            return;
         }
     }
     if (list->num != ARRAY_SIZE(g_values)) {
         diag_err("list num is not right");
-        return -1;
+        return;
     }
 
     /* 删除链表节点 */
@@ -48,12 +49,12 @@ int test_basic_list()
         ret = list_del_head(list);
         if (ret != 0) {
             diag_err("list add head failed");
-            return -1;
+            return;
         }
     }
     if (list->num != 0) {
         diag_err("list num is not right");
-        return -1;
+        return;
     }
     list_destroy(list);
     diag_info("test basic list success");
@@ -61,10 +62,9 @@ int test_basic_list()
 
 int main()
 {
-    int ret = test_basic_list();
-    if (ret != 0) {
-        diag_err("list test failed");
-        exit(0);
-    }
+    unit_test_t tests[] = {
+         unit_test(test_basic_list),
+    };
+    run_tests(tests, sizeof(tests) / sizeof(tests[0]));
     return 0;
 }
