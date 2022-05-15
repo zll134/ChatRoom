@@ -16,5 +16,4 @@
 - queue实现
 - rbtree实现完善
 - 测试模块完善
-- client server完成通信
 - 实现lz77算法
