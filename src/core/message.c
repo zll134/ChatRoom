@@ -11,7 +11,9 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <errno.h>
+
 #include "log.h"
+#include "pub_def.h"
 
 int msg_send(int fd, uint8_t type, void *data, uint32_t len)
 {

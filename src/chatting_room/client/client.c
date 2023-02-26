@@ -14,7 +14,7 @@
 #include <pthread.h>
 #include "log.h"
 #include "net.h"
-#include "pub.h"
+#include "pub_def.h"
 #include "message.h"
 #include "screen.h"
 

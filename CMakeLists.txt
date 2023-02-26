@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.5)
 
 # set the project name
-project (ChattingRoom)
+project(Toys)
 
 # set compiler
 set (CMAKE_C_COMPILER "gcc")

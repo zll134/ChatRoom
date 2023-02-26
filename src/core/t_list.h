@@ -3,8 +3,8 @@
  * Description:  链表数据结构
  * create time: 2022.3.16
  ********************************/
-#ifndef LIST_H
-#define LIST_H
+#ifndef T_LIST_H
+#define T_LIST_H
 
 typedef struct list_ops_s {
     int (*cmp)(void *data1, void *data2); /* 插入数据比较，返回负值; */
@@ -24,16 +24,19 @@ typedef struct {
     int num;
 } list_t;
 
-/* 创建链表对象 */
-list_t *list_create(struct list_ops_s *ops);
+/* 初始化链表对象 */
+void list_init(list_t *list, struct list_ops_s *ops);
+
+/* 释放链表对象 */
+void list_destroy(list_t *list);
 
 /* 在链表首部插入链表节点 */
 int list_add_head(list_t *list, void *value, int len);
 
-/* 在链表尾部插入链表节点 */
+/* 在链表尾部插入链表节点，key和value定义在相同的结构体中 */
 int list_add_tail(list_t *list, void *value, int len);
 
-/* 根据key查找链表节点中存储数据 */
+/* 根据key查找链表节点中存储数据, key和value使用相同的结构体 */
 void *list_find(list_t *list, void *key);
 
 /* 删除链表节点 */
@@ -44,9 +47,6 @@ int list_del_head(list_t *list);
 
 /* 删除链表尾部的链表节点 */
 int list_del_tail(list_t *list);
-
-/* 释放链表对象 */
-void list_destroy(list_t *list);
 
 /* 返回链表第一个节点中存储中的数据 */
 void *list_first(list_t *list);
