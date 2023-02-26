@@ -12,7 +12,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/epoll.h>
-#include "pub.h"
+#include "pub_def.h"
 #include "log.h"
 #include "thread_pool.h"
 #include "event.h"
@@ -32,7 +32,7 @@ typedef struct {
 
 struct {
     event_loop_t *loop; /* epoll循环 */
-    list_t *clients; /* 客户端的信息 */
+    list_t clients; /* 客户端的信息 */
 } g_server;
 
 static int client_compare(void *data1, void *data2)
@@ -139,11 +139,7 @@ int main(int argc, char **argv)
     struct list_ops_s ops = {
         .cmp = client_compare
     };
-    g_server.clients = list_create(&ops);
-    if (g_server.clients == NULL) {
-        diag_err("create clients failed");
-        return -1;
-    }
+    list_init(&g_server.clients, &ops);
 
     connect_init();
     return 0;

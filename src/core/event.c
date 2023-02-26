@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/epoll.h>
+#include <errno.h>
 #include "log.h"
 #include "rbtree.h"
 
@@ -60,7 +61,10 @@ void event_run_loop(event_loop_t *loop)
         struct epoll_event ees[EPOLL_EVENT_SIZE];
         int n = epoll_wait(loop->efd, ees, EPOLL_EVENT_SIZE, loop->timeout);
         if (n < 0) {
-            diag_err("epoll wait failed");
+            if (errno == EINTR) {
+                continue;
+            }
+            diag_err("epoll wait failed, errno %d", errno);
             return;
         }
 

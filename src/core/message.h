@@ -8,7 +8,7 @@
 #define MESSAGE_H
 
 #include <stdint.h>
-#include "pub.h"
+#include "pub_def.h"
 
 enum {
     MSG_LOGIN,

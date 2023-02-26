@@ -3,24 +3,21 @@
  * Description:  链表数据结构
  * create time: 2022.3.16
  ********************************/
-#include "list.h"
+#include "t_list.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "log.h"
 
-list_t *list_create(struct list_ops_s *ops)
+void list_init(list_t *list, struct list_ops_s *ops)
 {
-    list_t *list = (list_t *)malloc(sizeof(*list));
-    if (list == NULL) {
-        return NULL;
+    if (ops != NULL) {
+        list->ops = *ops;
     }
-    *list = (list_t){0};
-    list->ops = *ops;
+    list->num = 0;
     list->head.next = &list->tail;
     list->tail.prev = &list->head;
-    return list;
 }
 
 /* 释放链表对象 */
