@@ -11,6 +11,7 @@ enum {
     HTTP_PUT,
     HTTP_HEAD,
     HTTP_DELETE,
+    HTTP_INVALID_METHOD,
 } HTTP_METHOD_TYPE_E;
 
 #endif

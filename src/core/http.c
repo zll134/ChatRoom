@@ -16,7 +16,6 @@ include "http.h"
 typedef struct {
     url_data_t conn_params;
     int srv_fd;
-    http_request_t req_data;
 } http_client_t;
 
 void http_client_free(http_client_t *client)
@@ -26,7 +25,6 @@ void http_client_free(http_client_t *client)
     }
 
     url_free(&client->conn_params);
-    http_request_free(&client->req_data);
     free(client);
 }
 
@@ -36,6 +34,7 @@ http_client_t *http_client_new(const char *url)
     if (client == NULL) {
         return NULL;
     }
+
     client->srv_fd = -1;
     int ret = url_parse(url, &client->conn_params);
     if (ret != 0) {
