@@ -123,7 +123,7 @@ static uint32_t sds_calc_new_space_size(uint32_t needed_space)
     }
 }
 
-static uint32_t sds_make_space(sds_t s, uint32_t needed_space)
+static sds_t sds_make_space(sds_t s, uint32_t needed_space)
 {
     sds_hdr_t *hdr = sds_get_hdr(s);
     if (hdr->len + hdr->free > needed_space) {
@@ -172,4 +172,23 @@ static sds_t sds_cat_with_len(sds_t s, void *t, uint32_t len)
 sds_t sds_cat(sds_t obj, const char *t)
 {
     return sds_cat_with_len(obj, t, strlen(t));
+}
+
+sds_t sds_vcat(sds_t obj, ...)
+{
+    va_list ap;
+    va_start(ap, obj);
+
+    sds_t s = obj;
+    char *next = NULL;
+    while ((next = va_arg(*ap, char *)) != NULL) {
+        s = sds_cat(s, next);
+        if (s == NULL) {
+            diag_err("Cat next str failed");
+            va_end(ap);  
+            return NULL;
+        }
+    }
+    va_end(ap);
+    return s;
 }

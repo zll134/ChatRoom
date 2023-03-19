@@ -10,6 +10,14 @@
 #include "t_list.h"
 #include "http_pub.h"
 
-int http_request(HTTP_METHOD_TYPE_E method, url_data_t *url_data);
+typedef struct {
+    sds_t msg; /* http请求消息 */
+} http_request_t;
+
+int http_request_init(http_request_t *req);
+int http_request_release(http_request_t *req);
+
+int http_request_build_msg(HTTP_METHOD_TYPE_E method, http_request_t *req,
+    url_data_t *url_data);
 
 #endif
