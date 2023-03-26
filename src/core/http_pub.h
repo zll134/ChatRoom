@@ -6,7 +6,7 @@
 #ifndef HTTP_PUB_H
 #define HTTP_PUB_H
 
-enum {
+typedef enum {
     HTTP_GET,
     HTTP_PUT,
     HTTP_HEAD,

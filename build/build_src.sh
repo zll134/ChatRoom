@@ -19,3 +19,17 @@ function clean()
     output_path=$project_path/output
     [ -d $output_path ] && rm -rf $output_path
 }
+
+# 将二进制文件拷贝到工作目录中
+function install()
+{
+    project_path=$1
+    work_dir="$project_path/workspace"
+
+    if [ -d $work_dir ]; then
+        rm -rf $work_dir
+    fi
+
+    mkdir $work_dir
+    cp -f $project_path/output/bin/* $work_dir
+}

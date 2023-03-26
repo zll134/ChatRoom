@@ -31,4 +31,5 @@ if [ ! -z $build_test ]; then
     build_test  $project_path
 else
     build $project_path
+    install $project_path
 fi

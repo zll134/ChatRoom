@@ -6,9 +6,11 @@
 
 #include "sds.h"
 
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "log.h"
 
 #define MEMORY_THRESHOLD (2 * 1024 * 1024)
@@ -20,7 +22,7 @@
 
 sds_t sds_new_with_len(const char *init, int len)
 {
-    sds_hdr_t *sh = (sds_hdr_t *)malloc(sizeof(sds_hdr_t) + len + 1);
+    sds_hdr_t *sh = (sds_hdr_t *)calloc(1, sizeof(sds_hdr_t) + len + 1);
     if (sh == NULL) {
         return NULL;
     }
@@ -30,7 +32,6 @@ sds_t sds_new_with_len(const char *init, int len)
         sh->free = 0;
         sh->len = len;
     } else {
-        memset(sh->buf, 0, len);
         sh->free = len;
         sh->len = 0;
     }
@@ -68,6 +69,15 @@ uint32_t sds_get_len(sds_t obj)
     }
     sds_hdr_t *sh = (sds_hdr_t *)(obj - sizeof(sds_hdr_t));
     return sh->len;
+}
+
+uint32_t sds_get_capcity(sds_t obj)
+{
+    if (obj == NULL) {
+        return 0;
+    }
+    sds_hdr_t *sh = (sds_hdr_t *)(obj - sizeof(sds_hdr_t));
+    return sh->len + sh->free;
 }
 
 int sds_find_str(sds_t obj, uint32_t start, uint32_t end, const char *str)
@@ -146,8 +156,10 @@ static sds_t sds_make_space(sds_t s, uint32_t needed_space)
     return new_obj;
 }
 
-static sds_t sds_cat_with_len(sds_t s, void *t, uint32_t len)
+static sds_t sds_cat_with_len(sds_t s, const char *t, uint32_t len)
 {
+    diag_info("zhanglele test: sds_cat_with_len, s: %s, len %u, cap %u, t: %s, len %u.",
+        s, sds_get_len(s), sds_get_capcity(s),  t, len);
     if (s == NULL) {
         s = sds_new_with_len(t, len);
         if (s == NULL) {
@@ -156,16 +168,19 @@ static sds_t sds_cat_with_len(sds_t s, void *t, uint32_t len)
         }
     }
 
-    hdr_t *hdr = sds_get_hdr(s);
-
-    s = sds_make_space(s, hdr->len + hdr->free + len);
+    sds_hdr_t *hdr = sds_get_hdr(s);
+    s = sds_make_space(s, hdr->len + len);
     if (s == NULL) {
         diag_err("[sds] Malloc failed");
         return NULL;
     }
-
+    diag_info("zhanglele test: sds_cat_with_len1, s: %s, len %u, cap %u, t: %s, len %u.",
+        s, sds_get_len(s), sds_get_capcity(s),  t, len);
     /* 动态数组已保证目标地址空间是够的 */
     (void)strcpy(s + hdr->len, (char *)t);
+    hdr->len = hdr->len + len;
+    hdr->free = hdr->free - len;
+    diag_info("zhanglele test: sds_cat_with_len2\n");
     return s;
 }
 
@@ -178,10 +193,11 @@ sds_t sds_vcat(sds_t obj, ...)
 {
     va_list ap;
     va_start(ap, obj);
-
+    diag_err("sds_vcat start");
     sds_t s = obj;
     char *next = NULL;
-    while ((next = va_arg(*ap, char *)) != NULL) {
+    while ((next = va_arg(ap, char *)) != NULL) {
+        diag_info("sds_vcat, next %s.", next);
         s = sds_cat(s, next);
         if (s == NULL) {
             diag_err("Cat next str failed");
@@ -190,5 +206,6 @@ sds_t sds_vcat(sds_t obj, ...)
         }
     }
     va_end(ap);
+    diag_err("sds_vcat end11111. %s", s);
     return s;
 }

@@ -3,9 +3,12 @@
  * Description:  http模块
  * create time: 2023.01.27
  ********************************/
-include "http.h"
+#include "http.h"
 
+#include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+
 #include "log.h"
 #include "net.h"
 #include "pub_def.h"
@@ -23,10 +26,11 @@ void http_client_free(http_client_t *client)
 {
     if (client->srv_fd != -1) {
         close(client->srv_fd);
+        client->srv_fd = -1;
     }
-    
+
     url_free(&client->conn_params);
-    http_request_release(&clinet->req);
+    http_request_release(&client->req);
     free(client);
 }
 
@@ -64,7 +68,7 @@ int http_connect_server(http_client_t *client)
 
 int http_send_req(http_client_t *client)
 {
-    int ret = TOY_OK(client->srv_fd, client->req.msg, sds_get_len(client->req.msg);
+    int ret = net_write(client->srv_fd, client->req.msg, sds_get_len(client->req.msg));
     if (ret != TOY_ERR) {
         return TOY_ERR;
     }
@@ -95,7 +99,7 @@ int http_get(const char *url)
     }
 
     /* 构造请求报文 */
-    ret = http_request_build_msg(HTTP_GET, &client->conn_params);
+    ret = http_request_build_msg(HTTP_GET, &client->req, &client->conn_params);
     if (ret != TOY_OK) {
         http_client_free(client);
         return TOY_ERR;
