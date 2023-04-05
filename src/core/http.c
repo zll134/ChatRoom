@@ -69,7 +69,7 @@ int http_connect_server(http_client_t *client)
 int http_send_req(http_client_t *client)
 {
     int ret = net_write(client->srv_fd, client->req.msg, sds_get_len(client->req.msg));
-    if (ret != TOY_ERR) {
+    if (ret != sds_get_len(client->req.msg)) {
         return TOY_ERR;
     }
     return TOY_OK;

@@ -158,8 +158,6 @@ static sds_t sds_make_space(sds_t s, uint32_t needed_space)
 
 static sds_t sds_cat_with_len(sds_t s, const char *t, uint32_t len)
 {
-    diag_info("zhanglele test: sds_cat_with_len, s: %s, len %u, cap %u, t: %s, len %u.",
-        s, sds_get_len(s), sds_get_capcity(s),  t, len);
     if (s == NULL) {
         s = sds_new_with_len(t, len);
         if (s == NULL) {
@@ -174,13 +172,12 @@ static sds_t sds_cat_with_len(sds_t s, const char *t, uint32_t len)
         diag_err("[sds] Malloc failed");
         return NULL;
     }
-    diag_info("zhanglele test: sds_cat_with_len1, s: %s, len %u, cap %u, t: %s, len %u.",
-        s, sds_get_len(s), sds_get_capcity(s),  t, len);
+
     /* 动态数组已保证目标地址空间是够的 */
     (void)strcpy(s + hdr->len, (char *)t);
     hdr->len = hdr->len + len;
     hdr->free = hdr->free - len;
-    diag_info("zhanglele test: sds_cat_with_len2\n");
+
     return s;
 }
 
@@ -189,15 +186,19 @@ sds_t sds_cat(sds_t obj, const char *t)
     return sds_cat_with_len(obj, t, strlen(t));
 }
 
-sds_t sds_vcat(sds_t obj, ...)
+sds_t sds_vcat(sds_t obj, const char *format, ...)
 {
     va_list ap;
-    va_start(ap, obj);
-    diag_err("sds_vcat start");
+    va_start(ap, format);
+
     sds_t s = obj;
-    char *next = NULL;
-    while ((next = va_arg(ap, char *)) != NULL) {
-        diag_info("sds_vcat, next %s.", next);
+    int format_len = strlen(format);
+    for (int i = 0; i < format_len; i++) {
+        if (format[i] != 's') {
+            continue;
+        }
+
+        char *next = va_arg(ap, char *);
         s = sds_cat(s, next);
         if (s == NULL) {
             diag_err("Cat next str failed");
@@ -206,6 +207,5 @@ sds_t sds_vcat(sds_t obj, ...)
         }
     }
     va_end(ap);
-    diag_err("sds_vcat end11111. %s", s);
     return s;
 }

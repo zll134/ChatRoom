@@ -119,7 +119,7 @@ static int url_get_host_addr(sds_t urlStr, int *start_pos, url_data_t *params)
             return -1;
         }
         params->port = url_get_default_port(params->scheme);
-        *start_pos = *start_pos + end_pos;
+        *start_pos = end_pos;
     } else {
         params->host = sds_substr(urlStr, *start_pos, delim_pos);
         if (params->host == NULL) {
@@ -145,7 +145,7 @@ static int url_get_host_addr(sds_t urlStr, int *start_pos, url_data_t *params)
 static int url_get_path(sds_t urlStr, int *start_pos, url_data_t *params)
 {
     uint32_t url_len = sds_get_len(urlStr);
-    if (*start_pos >= url_len) {
+    if (*start_pos > url_len) {
         return 0;
     }
 
