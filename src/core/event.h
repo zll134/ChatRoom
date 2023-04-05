@@ -10,7 +10,6 @@
 #include <stdint.h>
 #include "rbtree.h"
 
-
 typedef struct {
     int efd; /* 创建epoll的文件描述符 */
     bool stopped; /* loop是否停止 */

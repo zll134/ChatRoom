@@ -18,7 +18,7 @@
 #include "event.h"
 #include "net.h"
 #include "event.h"
-#include "list.h"
+#include "t_list.h"
 #include "message.h"
 
 #define EPOLL_EVENT_SIZE 20
@@ -52,27 +52,27 @@ static void login_msg_proc(int fd, void *buf, int len)
     diag_info("recv login msg, name %s", login_req->name);
     strcpy(client.name, login_req->name);
     msg_login_resp_t login_resp = {0};
-    if (list_find(g_server.clients, &client) != NULL) {
+    if (list_find(&g_server.clients, &client) != NULL) {
         diag_info("user is exist.");
         login_resp.result = LOGIN_USER_EXIST;
         msg_send(fd, MSG_LOGIN, &login_resp, sizeof(login_resp));
         return;
     }
     client.fd = fd;
-    list_add_head(g_server.clients, &client, sizeof(client));
+    list_add_head(&g_server.clients, &client, sizeof(client));
 }
 
 static void chat_msg_proc(int fd, void *buf, int len)
 {
     msg_chat_req_t *chat_req = (msg_chat_req_t *)buf;
     diag_info("recv chat msg, name %s, content %s", chat_req->name, chat_req->buf);
-    void *ptr = list_first(g_server.clients);
+    void *ptr = list_first(&g_server.clients);
     while (ptr != NULL) {
         client_t *client = (client_t *)ptr;
         if (strcmp(client->name, chat_req->name) != 0) {
             msg_send(fd, MSG_CHAT, buf, len);
         }
-        ptr = list_next(g_server.clients, ptr);
+        ptr = list_next(&g_server.clients, ptr);
     }
 }
 

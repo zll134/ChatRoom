@@ -15,4 +15,6 @@
 #define TOY_OK 0
 #define TOY_ERR (-1)
 
+
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 #endif

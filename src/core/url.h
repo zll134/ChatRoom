@@ -21,7 +21,7 @@ typedef struct {
     sds_t frag;     /* 一小片资源名 */
 } url_data_t;
 
-int url_parse(const char *urlStr, url_data_t *params)
+int url_parse(const char *urlStr, url_data_t *params);
 void url_free(url_data_t *params);
 void url_print_info(url_data_t *params);
 

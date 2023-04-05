@@ -119,7 +119,7 @@ static int url_get_host_addr(sds_t urlStr, int *start_pos, url_data_t *params)
             return -1;
         }
         params->port = url_get_default_port(params->scheme);
-        *start_pos = *start_pos + end_pos;
+        *start_pos = end_pos;
     } else {
         params->host = sds_substr(urlStr, *start_pos, delim_pos);
         if (params->host == NULL) {
@@ -138,15 +138,14 @@ static int url_get_host_addr(sds_t urlStr, int *start_pos, url_data_t *params)
         sds_free(port_str);
         *start_pos = *start_pos + sds_get_len(params->host) + sds_get_len(port_str);
     }
-    diag_info("[url]Get host and port from url success, host %s, port %d.",
-        (char *)params->host, params->port);
+
     return 0;
 }
 
 static int url_get_path(sds_t urlStr, int *start_pos, url_data_t *params)
 {
     uint32_t url_len = sds_get_len(urlStr);
-    if (*start_pos >= url_len) {
+    if (*start_pos > url_len) {
         return 0;
     }
 
@@ -155,9 +154,18 @@ static int url_get_path(sds_t urlStr, int *start_pos, url_data_t *params)
         end_pos = url_len;
     }
 
+    if (*start_pos == end_pos) {
+        params->path = sds_new("/");
+        if (params->path == NULL) {
+            return -1;
+        }
+        return 0;
+    }
+    
     params->path = sds_substr(urlStr, *start_pos, end_pos);
-    if (params->user == NULL) {
-        return -1;
+    if (params->path == NULL) {
+        
+        return 0;
     }
 
     *start_pos = *start_pos + sds_get_len(params->path) + strlen(PATH_DELIM);
@@ -225,31 +233,40 @@ static int url_get_frag(sds_t urlStr, int *start_pos, url_data_t *params)
 void url_free(url_data_t *params)
 {
     if (params->url != NULL) {
-        sds_free(params->scheme);
+        sds_free(params->url);
+        params->url = NULL;
     }
     if (params->scheme != NULL) {
         sds_free(params->scheme);
+        params->scheme = NULL;
     }
     if (params->user != NULL) {
         sds_free(params->user);
+        params->user = NULL;
     }
     if (params->password != NULL) {
         sds_free(params->password);
+        params->password = NULL;
     }
     if (params->host != NULL) {
         sds_free(params->host);
+        params->host = NULL;
     }
     if (params->path != NULL) {
         sds_free(params->path);
+        params->path = NULL;
     }
     if (params->params != NULL) {
         sds_free(params->params);
+        params->params = NULL;
     }
     if (params->query != NULL) {
         sds_free(params->query);
+        params->query = NULL;
     }
     if (params->frag != NULL) {
         sds_free(params->frag);
+        params->frag = NULL;
     }
 }
 
@@ -306,7 +323,6 @@ int url_parse(const char *urlStr, url_data_t *params)
     if (ret != 0) {
         diag_err("[url]Get query from url failed, url %s.", (char *)urlStr);
         url_free(params);
-        sds_free(urlStr);
         return -1;
     }
 
@@ -316,6 +332,7 @@ int url_parse(const char *urlStr, url_data_t *params)
         url_free(params);
         return -1;
     }
+    url_print_info(params);
     return 0;
 }
 

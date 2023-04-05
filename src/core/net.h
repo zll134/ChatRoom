@@ -6,13 +6,15 @@
 #ifndef NET_H
 #define NET_H
 
+#include <stdint.h>
+
 /* 创建socket并进行监听 */
 int net_create_listener(int port);
 
 /* 创建socket并连接tcp*/
 int net_connect(const char *ip, uint32_t port);
 
-int net_connect_by_host(const char *host);
+int net_connect_by_host(const char *host, uint32_t port);
 
 /* 设置socket为nonblocking */
 int net_set_nonblock(int fd);

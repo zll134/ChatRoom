@@ -3,7 +3,7 @@ set(include_dir ${CMAKE_CURRENT_SOURCE_DIR}/../core
 )
 
 INCLUDE_DIRECTORIES(${include_dir})
-
+add_compile_options(-g)
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/../core core)
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/. src)
 
