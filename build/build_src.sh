@@ -21,7 +21,7 @@ function clean()
 }
 
 # 将二进制文件拷贝到工作目录中
-function install()
+function install_bin()
 {
     project_path=$1
     work_dir="$project_path/workspace"

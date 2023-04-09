@@ -25,7 +25,7 @@ typedef struct {
 } list_t;
 
 /* 初始化链表对象 */
-void list_init(list_t *list, struct list_ops_s *ops);
+list_t *list_create(struct list_ops_s *ops);
 
 /* 释放链表对象 */
 void list_destroy(list_t *list);
