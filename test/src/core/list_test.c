@@ -7,8 +7,23 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "log.h"
-#include "list.h"
+#include "t_list.h"
 #include "unittest.h"
+
+TEST_SETUP(list_test)
+{
+}
+
+TEST_TEAR_DOWN(list_test)
+{
+}
+
+TEST_CASE_SETUP(list_test)
+{
+}
+TEST_CASE_TEAR_DOWN(list_test)
+{
+}
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
@@ -19,7 +34,7 @@ int value_cmp(void *data1, void *data2)
     return *(int *)data1 > *(int *)data2;
 }
 
-void test_basic_list()
+TEST(list_test, test_basic_list)
 {
     int ret;
     struct list_ops_s ops = {
@@ -57,14 +72,15 @@ void test_basic_list()
         return;
     }
     list_destroy(list);
-    diag_info("test basic list success");
+}
+
+TEST_GROUP_RUNNER(list_test)
+{
+    RUN_TEST_CASE(list_test, test_basic_list);
 }
 
 int main()
 {
-    unit_test_t tests[] = {
-         unit_test(test_basic_list),
-    };
-    run_tests(tests, sizeof(tests) / sizeof(tests[0]));
+    RUN_TEST_GROUP(list_test);
     return 0;
 }

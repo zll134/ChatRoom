@@ -11,8 +11,8 @@ set (CMAKE_CXX_COMPILER "g++")
 
 add_compile_options(-g)
 
+add_subdirectory(src)
+
 if(BUILD_TEST)
 add_subdirectory(test)
-else()
-add_subdirectory(src)
 endif()

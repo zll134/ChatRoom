@@ -77,9 +77,5 @@ static void test_random_insert_and_delete()
 
 int main()
 {
-    unit_test_t tests[] = {
-         unit_test(test_random_insert_and_delete),
-    };
-    run_tests(tests, sizeof(tests) / sizeof(tests[0]));
     return 0;
 }

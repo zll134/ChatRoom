@@ -10,14 +10,21 @@
 #include <string.h>
 #include "log.h"
 
-void list_init(list_t *list, struct list_ops_s *ops)
+list_t *list_create(struct list_ops_s *ops)
 {
+    list_t *list = calloc(1, sizeof(*list));
+    if (list == NULL) {
+        return NULL;
+    }
+
     if (ops != NULL) {
         list->ops = *ops;
     }
+
     list->num = 0;
     list->head.next = &list->tail;
     list->tail.prev = &list->head;
+    return list;
 }
 
 /* 释放链表对象 */
