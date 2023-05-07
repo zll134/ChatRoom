@@ -21,6 +21,7 @@ TEST_TEAR_DOWN(list_test)
 TEST_CASE_SETUP(list_test)
 {
 }
+
 TEST_CASE_TEAR_DOWN(list_test)
 {
 }
@@ -41,46 +42,32 @@ TEST(list_test, test_basic_list)
         .cmp = value_cmp
     };
     list_t *list = list_create(&ops);
-    if (list == NULL) {
-        diag_err("list create failed");
-        return;
-    }
+    ASSERT_TRUE(list != NULL);
 
     /* 添加链表节点 */
     for (int i = 0; i < ARRAY_SIZE(g_values); i++) {
         ret = list_add_head(list, &g_values[i], sizeof(g_values[i]));
-        if (ret != 0) {
-            diag_err("list add head failed");
-            return;
-        }
+        ASSERT_TRUE(ret == 0);
     }
-    if (list->num != ARRAY_SIZE(g_values)) {
-        diag_err("list num is not right");
-        return;
-    }
+    ASSERT_TRUE(list->num == ARRAY_SIZE(g_values));
 
     /* 删除链表节点 */
     for (int i = 0; i < ARRAY_SIZE(g_values); i++) {
         ret = list_del_head(list);
-        if (ret != 0) {
-            diag_err("list add head failed");
-            return;
-        }
+        ASSERT_TRUE(ret == 0);
     }
-    if (list->num != 0) {
-        diag_err("list num is not right");
-        return;
-    }
+
+    ASSERT_TRUE(list->num == 0);
     list_destroy(list);
 }
 
-TEST_GROUP_RUNNER(list_test)
+TEST_SUITE_RUNNER(list_test)
 {
     RUN_TEST_CASE(list_test, test_basic_list);
 }
 
 int main()
 {
-    RUN_TEST_GROUP(list_test);
+    RUN_TEST_SUITE(list_test);
     return 0;
 }
