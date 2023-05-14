@@ -26,6 +26,7 @@
 | http      | url解析                    |                                                              | OK   |
 |           | http请求                   |                                                              | OK   |
 | 配置解析  | xml or json                |                                                              | NOK  |
+|           | protobuf                   |                                                              |      |
 
 
 
