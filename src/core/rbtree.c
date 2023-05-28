@@ -426,3 +426,8 @@ void rbtree_destroy(rbtree_t *tree)
     free(tree);
     return;
 }
+
+int rbtree_get_node_num(rbtree_t *tree)
+{
+    return tree->num;
+}

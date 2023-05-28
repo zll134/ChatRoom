@@ -47,4 +47,6 @@ void rbtree_dump(rbtree_t *tree, rbtree_node_t *node, int depth);
 /* 红黑树销毁函数 */
 void rbtree_destroy(rbtree_t *tree); // 待实现
 
+int rbtree_get_node_num(rbtree_t *tree);
+
 #endif

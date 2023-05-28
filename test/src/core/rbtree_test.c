@@ -10,6 +10,22 @@
 #include "unittest.h"
 #include "rbtree.h"
 
+TEST_SETUP(rbtree_test)
+{
+}
+
+TEST_TEAR_DOWN(rbtree_test)
+{
+}
+
+TEST_CASE_SETUP(rbtree_test)
+{
+}
+
+TEST_CASE_TEAR_DOWN(rbtree_test)
+{
+}
+
 #define MAX_SIZE 1000
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
@@ -58,7 +74,7 @@ static void values_delete(rbtree_t *tree, int *values, int len)
     }
 }
 
-static void test_random_insert_and_delete()
+TEST(rbtree_test, test_random_insert_and_delete)
 {
     struct rbtree_ops_s ops = {
         value_cmp,
@@ -73,9 +89,17 @@ static void test_random_insert_and_delete()
     values_insert(tree, values, len);
     values_shuffle(values, len);
     values_delete(tree, values, len);
+
+    ASSERT_TRUE(rbtree_get_node_num(tree) == 0);
+}
+
+TEST_SUITE_RUNNER(rbtree_test)
+{
+    RUN_TEST_CASE(rbtree_test, test_random_insert_and_delete);
 }
 
 int main()
 {
+    RUN_TEST_SUITE(rbtree_test);
     return 0;
 }
