@@ -7,16 +7,13 @@
 #define DICT_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
-typedef struct {
+typedef struct tag_dict_entry {
     void *key;
-    union {
-        void *val;
-        uint64_t u64;
-        int64_t s64;
-        double d;
-    } v;
-    struct dictEntry *next;
+    void *val;
+    struct tag_dict_entry *next;
+    struct tag_dict_entry *prev;
 } dict_entry_t;
 
 typedef struct {
@@ -29,6 +26,10 @@ typedef struct {
 typedef struct {
     void *priv_data;
     uint32_t (*hash_func)(const void *key);
+    void *(*key_dup)(const void *key);
+    void *(*val_dup)(const void *val);
+    void (*free)(const void *data);
+    bool (*key_match)(const void *key1, const void *key2);
 } dict_config_t;
 
 typedef struct {
