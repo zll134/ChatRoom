@@ -9,11 +9,13 @@ increment=""
 clean_flag=""
 build_test=""
 run_test=""
-
+test_module=""
 function usage()
 {
-    echo "Script build.sh's usage:"
-    echo "  ./build.sh [option]"
+    echo "Script usage:"
+    echo "  Build all:           ./build.sh"
+    echo "  Build increment:     ./build.sh -i"
+    echo "  Build and run test: . /build.sh -i -t -r [ -m module ]"
     echo "Options:"
     echo " -i      Incremental build."
     echo " -c      Clean build result."
@@ -22,7 +24,7 @@ function usage()
     echo " -h      Print help."
 }
 
-while getopts 'icthr' opt;
+while getopts 'icthrm:' opt;
 do
     case $opt in
         i)
@@ -33,6 +35,8 @@ do
             build_test="true";; # 表示编译测试的二进制模块
         r)
             run_test="true";; # 表示编译测试的二进制模块
+        m)
+            test_module="$OPTARG";;
         h)
             usage
             exit 0;;
@@ -59,6 +63,6 @@ fi
 
 # 运行测试用例
 if [ "$run_test"x == "true"x ];then
-    run_test $project_path
+    run_test $project_path $test_module
 fi
 

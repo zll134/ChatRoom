@@ -13,7 +13,6 @@ typedef struct tag_dict_entry {
     void *key;
     void *val;
     struct tag_dict_entry *next;
-    struct tag_dict_entry *prev;
 } dict_entry_t;
 
 typedef struct {
@@ -51,9 +50,6 @@ int dict_resize(dict_t *dict, uint32_t size);
 
 /* 向哈希表中添加键值对 */
 int dict_add(dict_t *dict, void *key, void *value);
-
-/* 修改哈希表中的对应键的值 */
-int dict_set(dict_t *dict, void *key, void *value);
 
 /* 删除哈希表中的键 */
 int dict_delete(dict_t *dict, void *key);

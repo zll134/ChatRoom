@@ -13,6 +13,11 @@ target_link_libraries(rbtree_test PRIVATE pthread toy_core)
 add_executable(list_test list_test.c ${frame_srcs})
 target_link_libraries(list_test PRIVATE pthread toy_core)
 
+# dict_test 测试模块
+add_executable(dict_test list_test.c ${frame_srcs})
+target_link_libraries(dict_test PRIVATE pthread toy_core)
+
 install(TARGETS list_test
                 rbtree_test
+                dict_test
         DESTINATION test_bin)
