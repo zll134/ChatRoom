@@ -20,7 +20,7 @@ function usage()
     echo " -i      Incremental build."
     echo " -c      Clean build result."
     echo " -t      Build test file"
-    echo " -r      Run all test"
+    echo " -r      Run test case"
     echo " -h      Print help."
 }
 

@@ -105,20 +105,38 @@ void unit_test_case_runner(unit_test_case_t *test_case)
     unit_test_case_tear_down(test_case);
 }
 
-void unit_test_boolean(bool condition, bool expected, uint32_t assert_type, 
+static void unit_test_failed_proc(uint32_t assert_type)
+{
+    g_running_ctx.case_passed = false;
+    if (assert_type == ASSERTION_TYPE_ASSERT) {
+        unit_test_case_tear_down(&g_running_ctx.test_case);
+        g_running_ctx.test_suite.tear_down();
+        exit(0);
+    }
+}
+
+void unit_test_assert_boolean(bool condition, bool expected, uint32_t assert_type, 
     const char *file, uint32_t line)
 {
     if (condition == expected) {
         return;
     }
 
-    g_running_ctx.case_passed = false;
     unit_print(FONT_WHITE, "%s(line %u): assertion failed:\nactual %u\nexpeced %u\n",
         file, line, condition, expected);
 
-    if (assert_type == ASSERTION_TYPE_ASSERT) {
-        unit_test_case_tear_down(&g_running_ctx.test_case);
-        g_running_ctx.test_suite.tear_down();
-        exit(0);
+    unit_test_failed_proc(assert_type);
+}
+
+void unit_test_assert_integer(uint32_t actual, uint32_t expected, uint32_t assert_type, 
+    const char *file, uint32_t line)
+{
+    if (actual == expected) {
+        return;
     }
+
+    unit_print(FONT_WHITE, "%s(line %u): assertion failed:\nactual %u\nexpeced %u\n",
+        file, line, actual, expected);
+
+    unit_test_failed_proc(assert_type);
 }

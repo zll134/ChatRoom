@@ -35,7 +35,10 @@ void unit_test_suite_runner(unit_test_suite_t* suite);
 
 void unit_test_case_runner(unit_test_case_t* test_case);
 
-void unit_test_boolean(bool condition, bool expected, uint32_t assert_type, 
+void unit_test_assert_boolean(bool condition, bool expected, uint32_t assert_type, 
+    const char *file, uint32_t line);
+
+void unit_test_assert_integer(uint32_t actual, uint32_t expected, uint32_t assert_type, 
     const char *file, uint32_t line);
 
 /* 定义测试套准备函数 */
@@ -97,17 +100,24 @@ void unit_test_boolean(bool condition, bool expected, uint32_t assert_type,
 #define RUN_TEST_CASE(group, name) \
     TEST_##group##_##name##_RUN();
 
-/* 真假判断 */
+/* 布尔值断言 */
 #define EXPECT_TRUE(condition) \
-    unit_test_boolean(condition, true, ASSERTION_TYPE_EXPECT, __FILE__, __LINE__);
+    unit_test_assert_boolean(condition, true, ASSERTION_TYPE_EXPECT, __FILE__, __LINE__);
 
 #define EXPECT_FALSE(condition) \
-    unit_test_boolean(condition, false, ASSERTION_TYPE_EXPECT, __FILE__, __LINE__);
+    unit_test_assert_boolean(condition, false, ASSERTION_TYPE_EXPECT, __FILE__, __LINE__);
 
 #define ASSERT_TRUE(condition) \
-    unit_test_boolean(condition, true, ASSERTION_TYPE_ASSERT, __FILE__, __LINE__);
+    unit_test_assert_boolean(condition, true, ASSERTION_TYPE_ASSERT, __FILE__, __LINE__);
 
 #define ASSERT_FALSE(condition) \
-    unit_test_boolean(condition, false, ASSERTION_TYPE_ASSERT, __FILE__, __LINE__);
+    unit_test_assert_boolean(condition, false, ASSERTION_TYPE_ASSERT, __FILE__, __LINE__);
+
+/* 整数断言 */
+#define EXPECT_EQ(actual, expected) \
+    unit_test_assert_integer((actual), (expected), ASSERTION_TYPE_EXPECT, __FILE__, __LINE__);
+
+#define ASSERT_EQ(actual, expected) \
+    unit_test_assert_integer((actual), (expected), ASSERTION_TYPE_ASSERT, __FILE__, __LINE__);
 
 #endif

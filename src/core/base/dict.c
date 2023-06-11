@@ -8,6 +8,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "pub_def.h"
 #include "log.h"
@@ -29,10 +30,7 @@ static int dict_check_config(dict_config_t *config)
     }
 
     if ((config->hash_func == NULL) ||
-        (config->key_dup == NULL) ||
-        (config->free == NULL) || 
-        (config->val_dup == NULL) ||
-        (config->key_match)) {
+        (config->key_match == NULL)) {
         return TOY_ERR_DICT_CALLBACK_NULL;
     }
     return TOY_OK;
@@ -68,8 +66,7 @@ dict_t *dict_create(dict_config_t *config)
 static void dict_entry_free(dict_t *dict, dict_entry_t *entry)
 {
     if (entry != NULL) {
-        dict->config.free(entry->key);
-        dict->config.free(entry->val);
+        free(entry->record);
         free(entry);
     }
 }
@@ -85,6 +82,7 @@ static void dict_ht_destroy(dict_t *dict, dict_htable_t *ht)
         }
     }
 }
+
 void dict_destroy(dict_t *dict)
 {
     if (dict == NULL) {
@@ -94,7 +92,7 @@ void dict_destroy(dict_t *dict)
         if (dict->ht[ht_idx].table == NULL) {
             continue;
         }
-        dict_ht_destroy(dict, dict->dict->ht[ht_idx]);
+        dict_ht_destroy(dict, &dict->ht[ht_idx]);
     }
     free(dict);
 }
@@ -118,7 +116,7 @@ int dict_resize(dict_t *dict, uint32_t size)
 
     if ((real_size == dict->ht[0].size) ||
         (real_size < dict->ht[0].used)) {
-        return TOY_ERR_DICT_INVALID_PARA;
+        return TOY_OK;
     }
 
     /* 如果rehash正在进行，则不能进行重置大小; */
@@ -137,12 +135,12 @@ int dict_resize(dict_t *dict, uint32_t size)
     }
 
     if (dict->ht[0].table == NULL) {
-        dict->ht[0].table = ht;
+        dict->ht[0] = ht;
         return TOY_OK;
     }
 
     /* 非rehash状态，可以保证ht[1]不为空 */
-    dict->ht[1].table = ht;
+    dict->ht[1] = ht;
     dict->rehash_idx = 0;
     return TOY_OK;
 }
@@ -155,11 +153,11 @@ static int dict_step_rehash(dict_t *dict, uint32_t nbucket)
         return TOY_OK;
     }
 
-    dict_htable_t *old_ht = dict->ht[0];
-    dict_htable_t *new_ht = dict->ht[1];
+    dict_htable_t *old_ht = &dict->ht[0];
+    dict_htable_t *new_ht = &dict->ht[1];
 
     while (nbucket-- && old_ht->used > 0 && empty_visits > 0) {
-        if (dict->rehash_idx >= old_ht.size) {
+        if (dict->rehash_idx >= old_ht->size) {
             continue;
         }
 
@@ -170,16 +168,17 @@ static int dict_step_rehash(dict_t *dict, uint32_t nbucket)
         }
 
         /* key从旧的哈希表移到新的哈希表 */
-        dict_entry_t *entry = old_ht->table[dict->rehashidx];
+        dict_entry_t *entry = old_ht->table[dict->rehash_idx];
         while(entry != NULL) {
-            uint32_t new_idx = dict->config.hash_func(entry->key) & new_ht->sizemask;
+            dict_entry_t *next_entry = entry->next;
+            uint32_t new_idx = dict->config.hash_func(entry->record) & new_ht->sizemask;
 
             entry->next = new_ht->table[new_idx];
             new_ht->table[new_idx] = entry;
-            old_ht.used--;
-            new_ht.used++;
+            old_ht->used--;
+            new_ht->used++;
 
-            entry = entry->next;
+            entry = next_entry;
         }
         old_ht->table[dict->rehash_idx] = NULL;
         dict->rehash_idx++;
@@ -197,17 +196,17 @@ static int dict_step_rehash(dict_t *dict, uint32_t nbucket)
     return TOY_OK;
 }
 
-int dict_find(dict_t *dict, void *key)
+dict_entry_t *dict_find(dict_t *dict, const void *record)
 {
-    if ((dict == NULL) || (key == NULL)) {
-        return TOY_ERR_DICT_PARAM_INVALID;
+    if ((dict == NULL) || (record == NULL)) {
+        return NULL;
     }
 
     if (dict_is_rehashing(dict)) {
         dict_step_rehash(dict, HT_REHASH_STEP_NUM);
     }
 
-    uint32_t hash_value = dict->config.hash_func(dict, key);
+    uint32_t hash_value = dict->config.hash_func(record);
 
     for (int ht_idx = 0; ht_idx <= 1; ht_idx++) {
         if (dict->ht[ht_idx].table == NULL) {
@@ -217,7 +216,7 @@ int dict_find(dict_t *dict, void *key)
         uint32_t idx = hash_value & dict->ht[ht_idx].sizemask;
         dict_entry_t *entry = dict->ht[ht_idx].table[idx];
         while (entry != NULL) {
-            if (dict->config.key_match(key, entry->key)) {
+            if (dict->config.key_match(record, entry->record)) {
                 return entry;
             }
             entry = entry->next;
@@ -227,33 +226,28 @@ int dict_find(dict_t *dict, void *key)
 }
 
 static dict_entry_t *dict_entry_create(dict_t *dict,
-    void *key, void *val)
+    void *record, uint32_t record_size)
 {
-    dict_entry_t *entry = calloc(sizeof(*entry));
+    dict_entry_t *entry = calloc(1, sizeof(*entry));
     if (entry == NULL) {
         return NULL;
     }
 
-    entry->key = dict->config.key_dup(key);
-    if (entry->key == NULL) {
+    entry->record = calloc(1, record_size);
+    if (entry->record == NULL) {
         free(entry);
         return NULL;
     }
 
-    entry->val = dict->config.val_dup(val);
-    if (entry->val == NULL) {
-        free(entry);
-        dict->config.free(entry->key);
-        return NULL;
-    }
-
+    memcpy(entry->record, record, record_size);
+    entry->record_size = record_size;
     return entry;
 }
 
-static int dict_add_raw(dict_t *dict, void *key, void *val)
+static int dict_add_raw(dict_t *dict, void *record, uint32_t record_size)
 {
-    dict_entry_t *entry = dict_entry_create(dict, key);
-    if (entry = NULL) {
+    dict_entry_t *entry = dict_entry_create(dict, record, record_size);
+    if (entry == NULL) {
         return TOY_ERR_DICT_MALLOC_FAILED;
     }
 
@@ -262,7 +256,7 @@ static int dict_add_raw(dict_t *dict, void *key, void *val)
         ht = &dict->ht[1];
     }
 
-    uint32_t hash_value = dict->config.hash_func(dict, key);
+    uint32_t hash_value = dict->config.hash_func(record);
     uint32_t idx = hash_value & ht->sizemask;
 
     entry->next = ht->table[idx];
@@ -284,17 +278,17 @@ static int dict_resize_if_needed(dict_t *dict)
      * used/size 比率低于0.01时，则缩小哈希表
     **/
     if ((dict->ht[0].used / dict->ht[0].size < HT_EXPAND_RATIO) &&
-        (dict->ht[0].used != 0 ||
-         dict->ht[0].size / dict->ht[0].used >= HT_SHRINK_RATIO)) {
+        (dict->ht[0].used == 0 ||
+         dict->ht[0].size / dict->ht[0].used <= HT_SHRINK_RATIO)) {
         return TOY_OK;
     }
 
-    return dict_resize(dict, d->ht[0].used * 2);
+    return dict_resize(dict, dict->ht[0].used * 2);
 }
 
-int dict_add(dict_t *dict, void *key, void *val)
+int dict_add(dict_t *dict, void *record, uint32_t record_size)
 {
-    if ((dict == NULL) || (key == NULL) || (val == NULL)) {
+    if ((dict == NULL) || (record == NULL)) {
         return TOY_ERR_DICT_PARAM_INVALID;
     }
 
@@ -302,8 +296,8 @@ int dict_add(dict_t *dict, void *key, void *val)
         dict_step_rehash(dict, HT_REHASH_STEP_NUM);
     }
 
-    dict_entry_t *entry = dict_find(dict, key);
-    if (entry = NULL) {
+    dict_entry_t *entry = dict_find(dict, record);
+    if (entry != NULL) {
         return TOY_ERR_DICT_KEY_EXIST;
     }
 
@@ -312,7 +306,7 @@ int dict_add(dict_t *dict, void *key, void *val)
         return ret;
     }
 
-    ret = dict_add_raw(dict, key, val);
+    ret = dict_add_raw(dict, record, record_size);
     if (ret != TOY_OK) {
         return ret;
     }
@@ -321,19 +315,21 @@ int dict_add(dict_t *dict, void *key, void *val)
 }
 
 static int dict_delete_key_in_ht(dict_t *dict, dict_htable_t *ht,
-    void *key, uint32_t hash_value)
+    void *record, uint32_t hash_value)
 {
     dict_entry_t *prev_entry = NULL;
     uint32_t idx = hash_value & ht->sizemask;
     dict_entry_t *entry = ht->table[idx];
+
     while (entry != NULL) {
-        if (dict->config.key_match(key, entry->key)) {
+        if (dict->config.key_match(record, entry->record)) {
             if (prev_entry == NULL) {
-                ht->table[idx] = prev_entry;
+                ht->table[idx] = entry->next;
             } else {
                 prev_entry->next = entry->next;
             }
             dict_entry_free(dict, entry);
+            ht->used--;
             return TOY_OK;
         }
 
@@ -344,28 +340,29 @@ static int dict_delete_key_in_ht(dict_t *dict, dict_htable_t *ht,
     return TOY_ERR_DICT_KEY_NOT_EXIST;
 }
 
-static int dict_delete_key(dict_t *dict, void *key)
+static int dict_delete_key(dict_t *dict, void *record)
 {
-    uint32_t hash_value = dict->config.hash_func(dict, key);
+    uint32_t hash_value = dict->config.hash_func(record);
 
     for (int ht_idx = 0; ht_idx <= 1; ht_idx++) {
-        dict_htable_t *ht = dict->ht[ht_idx];
+        dict_htable_t *ht = &dict->ht[ht_idx];
         if (ht->table == NULL) {
             continue;
         }
 
-        int ret = dict_delete_key_in_ht(dict, ht, key, hash_value);
+        int ret = dict_delete_key_in_ht(dict, ht, record, hash_value);
         if (ret == TOY_OK) {
-            return;
+            return TOY_OK;
         }
     }
+
     return TOY_ERR_DICT_KEY_NOT_EXIST;
 }
 
 /* 删除哈希表中的键 */
-int dict_delete(dict_t *dict, void *key)
+int dict_delete(dict_t *dict, void *record)
 {
-    if ((dict == NULL) || (key == NULL)) {
+    if ((dict == NULL) || (record == NULL)) {
         return TOY_ERR_DICT_PARAM_INVALID;
     }
 
@@ -378,10 +375,23 @@ int dict_delete(dict_t *dict, void *key)
         return ret;
     }
 
-    int ret = dict_delete_key(dict, key);
+    ret = dict_delete_key(dict, record);
     if (ret != TOY_OK) {
         return ret;
     }
 
     return TOY_OK;
+}
+
+uint32_t dict_get_entry_num(dict_t *dict)
+{
+    uint32_t entry_num = 0;
+    for (int ht_idx = 0; ht_idx <= 1; ht_idx++) {
+        if (dict->ht[ht_idx].table == NULL) {
+            continue;
+        }
+        entry_num += dict->ht[ht_idx].used;
+    }
+
+    return entry_num;
 }

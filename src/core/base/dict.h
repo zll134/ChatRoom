@@ -10,8 +10,8 @@
 #include <stdbool.h>
 
 typedef struct tag_dict_entry {
-    void *key;
-    void *val;
+    void *record;
+    uint32_t record_size;
     struct tag_dict_entry *next;
 } dict_entry_t;
 
@@ -24,10 +24,7 @@ typedef struct {
 
 typedef struct {
     void *priv_data;
-    uint32_t (*hash_func)(const void *key);
-    void *(*key_dup)(const void *key);
-    void *(*val_dup)(const void *val);
-    void (*free)(const void *data);
+    uint32_t (*hash_func)(const void *record);
     bool (*key_match)(const void *key1, const void *key2);
 } dict_config_t;
 
@@ -48,10 +45,12 @@ void dict_destroy(dict_t *dict);
  * */
 int dict_resize(dict_t *dict, uint32_t size);
 
-/* 向哈希表中添加键值对 */
-int dict_add(dict_t *dict, void *key, void *value);
+/* 向哈希表中添加键值对, record中存储键值对 */
+int dict_add(dict_t *dict, void *record, uint32_t record_size);
 
-/* 删除哈希表中的键 */
-int dict_delete(dict_t *dict, void *key);
+/* 删除哈希表中的键， record中填写key值即可 */
+int dict_delete(dict_t *dict, void *record);
+
+uint32_t dict_get_entry_num(dict_t *dict);
 
 #endif

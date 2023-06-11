@@ -7,15 +7,30 @@
 #include <stdio.h>
 #include <time.h>
 #include "log.h"
+#include "pub_def.h"
 #include "unittest.h"
 #include "dict.h"
+#include "hash.h"
+#include "common_data.c"
 
 dict_t *g_dict = NULL;
+
+static uint32_t test_hash_func(const void *key)
+{
+    return dict_int_hash_func(*(uint32_t *)key);
+}
+
+bool test_key_match(const void *key1, const void *key2)
+{
+    return *(uint32_t *)key1 == *(uint32_t *)key2;
+}
 
 TEST_SETUP(dict_test)
 {
     dict_config_t config = {
-
+        .priv_data = NULL,
+        .hash_func = test_hash_func,
+        .key_match = test_key_match
     };
     g_dict = dict_create(&config);
     ASSERT_TRUE(g_dict != NULL);
@@ -35,29 +50,45 @@ TEST_CASE_TEAR_DOWN(dict_test)
 {
 }
 
-static uint32_t g_test_vals[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
-    19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 
-
-}
-static void values_shuffle(int *values, int len)
+TEST(dict_test, basic_add_and_delete_expect_ok)
 {
-    srand(time(NULL));
-    for (int i = 0; i < len; i++) {
-        int index = rand() % len;
-        int t = values[0];
-        values[0] = values[index];
-        values[index] = t;
+    uint32_t v = 1;
+
+    // 添加数据
+    int ret = dict_add(g_dict, &v, sizeof(uint32_t));
+    ASSERT_EQ(ret, TOY_OK);
+
+    // 删除数据
+    ret = dict_delete(g_dict, &v);
+    ASSERT_EQ(ret, TOY_OK);
+    ASSERT_EQ(dict_get_entry_num(g_dict), 0);
+}
+
+TEST(dict_test, batch_add_and_delete_expect_ok)
+{
+    uint32_t *values = g_common_test_data1;
+    uint32_t num = ARRAY_SIZE(g_common_test_data1);
+    int ret;
+
+    // 添加数据
+    for (int i = 0; i < num; i++) {
+        ret = dict_add(g_dict, &values[i], sizeof(uint32_t));
+        ASSERT_EQ(ret, TOY_OK);
     }
-}
+    ASSERT_EQ(dict_get_entry_num(g_dict), num);
 
-TEST(dict_test, random_add_and_delete_expect_true)
-{
-    
+    // 删除数据
+    for (int i = 0; i < num; i++) {
+        ret = dict_delete(g_dict, &values[i]);
+        ASSERT_EQ(ret, TOY_OK);
+    }
+    ASSERT_EQ(dict_get_entry_num(g_dict), 0);
 }
 
 TEST_SUITE_RUNNER(dict_test)
 {
-    RUN_TEST_CASE(dict_test, test_random_add_and_delete);
+    RUN_TEST_CASE(dict_test, basic_add_and_delete_expect_ok);
+    RUN_TEST_CASE(dict_test, batch_add_and_delete_expect_ok);
 }
 
 int main()
