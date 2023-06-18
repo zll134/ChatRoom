@@ -63,11 +63,15 @@ TEST(dict_test, basic_add_and_delete_expect_ok)
     ASSERT_EQ(ret, TOY_OK);
     ASSERT_EQ(dict_get_entry_num(g_dict), 0);
 }
+void zhanglele()
+{
+
+}
 
 TEST(dict_test, batch_add_and_delete_expect_ok)
 {
-    uint32_t *values = g_common_test_data1;
-    uint32_t num = ARRAY_SIZE(g_common_test_data1);
+    uint32_t *values = g_test_data1;
+    uint32_t num = ARRAY_SIZE(g_test_data1);
     int ret;
 
     // 添加数据
@@ -77,12 +81,20 @@ TEST(dict_test, batch_add_and_delete_expect_ok)
     }
     ASSERT_EQ(dict_get_entry_num(g_dict), num);
 
+    // 查询数据
+    for (int i = 0; i < num; i++) {
+        dict_entry_t *entry = dict_find(g_dict, &values[g_test_random_index1[i]]);
+        ASSERT_EQ(*(int *)entry->record, values[g_test_random_index1[i]]);
+    }
+
     // 删除数据
     for (int i = 0; i < num; i++) {
-        ret = dict_delete(g_dict, &values[i]);
+        ret = dict_delete(g_dict, &values[g_test_random_index1[i]]);
         ASSERT_EQ(ret, TOY_OK);
     }
     ASSERT_EQ(dict_get_entry_num(g_dict), 0);
+
+    printf("aver search len: %d \n", dict_get_average_search_len(g_dict));
 }
 
 TEST_SUITE_RUNNER(dict_test)

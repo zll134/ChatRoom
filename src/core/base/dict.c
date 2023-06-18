@@ -196,6 +196,16 @@ static int dict_step_rehash(dict_t *dict, uint32_t nbucket)
     return TOY_OK;
 }
 
+static void dict_increase_search_len(dict_t *dict)
+{
+    dict->stat.total_search_len++;
+}
+
+static void dict_increase_oper_times(dict_t *dict)
+{
+    dict->stat.oper_times++;
+}
+
 dict_entry_t *dict_find(dict_t *dict, const void *record)
 {
     if ((dict == NULL) || (record == NULL)) {
@@ -206,8 +216,8 @@ dict_entry_t *dict_find(dict_t *dict, const void *record)
         dict_step_rehash(dict, HT_REHASH_STEP_NUM);
     }
 
+    dict_increase_oper_times(dict);
     uint32_t hash_value = dict->config.hash_func(record);
-
     for (int ht_idx = 0; ht_idx <= 1; ht_idx++) {
         if (dict->ht[ht_idx].table == NULL) {
             continue;
@@ -219,6 +229,8 @@ dict_entry_t *dict_find(dict_t *dict, const void *record)
             if (dict->config.key_match(record, entry->record)) {
                 return entry;
             }
+
+            dict_increase_search_len(dict);
             entry = entry->next;
         }
     }
@@ -317,6 +329,8 @@ int dict_add(dict_t *dict, void *record, uint32_t record_size)
 static int dict_delete_key_in_ht(dict_t *dict, dict_htable_t *ht,
     void *record, uint32_t hash_value)
 {
+    dict_increase_oper_times(dict);
+
     dict_entry_t *prev_entry = NULL;
     uint32_t idx = hash_value & ht->sizemask;
     dict_entry_t *entry = ht->table[idx];
@@ -333,6 +347,7 @@ static int dict_delete_key_in_ht(dict_t *dict, dict_htable_t *ht,
             return TOY_OK;
         }
 
+        dict_increase_search_len(dict);
         prev_entry = entry;
         entry = entry->next;
     }
@@ -394,4 +409,9 @@ uint32_t dict_get_entry_num(dict_t *dict)
     }
 
     return entry_num;
+}
+
+int dict_get_average_search_len(dict_t *dict)
+{
+    return dict->stat.total_search_len / dict->stat.oper_times;
 }
