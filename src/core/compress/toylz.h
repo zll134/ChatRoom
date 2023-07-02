@@ -6,16 +6,26 @@
 #ifndef TOYLZ_H
 #define TOYLZ_H
 
-#define FASTLZ_VERSION 0x000500
+#include <stdint.h>
 
-#define FASTLZ_VERSION_MAJOR 0
-#define FASTLZ_VERSION_MINOR 5
-#define FASTLZ_VERSION_REVISION 0
+#define LZ_MIN_COMPRESS_LEVEL 0
+#define LZ_MAX_COMPRESS_LEVEL 9
 
-#define FASTLZ_VERSION_STRING "0.5.0"
+typedef struct {
+    uint32_t sliding_win_size;
+} lz_options_t;
+
+/** 预先设置压缩时的压缩参数
+ *  @param: option: [out] 表示压缩参数
+ *          level:  [in]  表示压缩级别，范围为0~9
+ *  @return: TOY_OK 表示成功
+ *           
+ */
+int lz_option_preset(lz_options_t *option, int level);
 
 int lz_decompress(const void* input, int length, void* output, int maxout);
 
-int lz_compress(const void* input, int length, void* output);
+int lz_compress(const void *in, uint32_t in_len, void *out, uint32_t out_len,
+    lz_options_t *option);
 
 #endif

@@ -48,7 +48,7 @@ void dict_destroy(dict_t *dict);
 
 /* 改变哈希表的长度。
  * @warning: 如果正在进行rehash，该操作会失败
- * */
+ **/
 int dict_resize(dict_t *dict, uint32_t size);
 
 /* 向哈希表中添加键值对, record中存储键值对 */

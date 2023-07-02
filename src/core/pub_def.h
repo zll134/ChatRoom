@@ -30,4 +30,7 @@
 #define TOY_ERR_DICT_KEY_NOT_EXIST     108
 #define TOY_ERR_DICT_INVALID_REALSIZE  109
 
+/* 201~300 为压缩模块的错误码 */
+#define TOY_ERR_LZ_LEVEL_INVALID       201
+
 #endif

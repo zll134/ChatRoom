@@ -4,113 +4,78 @@
  * create time:  2023.05.07
  ********************************/
 
-#include "fastlz.h"
+#include "toylz.h"
 
 #include <stdint.h>
 
+#include "pub_def.h"
 #include "dict.h"
 
-
-/*
- * Give hints to the compiler for branch prediction optimization.
+/**
+ * 1、压缩文件格式：
+ *    +========+=======+     +=======+
+ *    | Header | block | ... | block |
+ *    +========+=======+     +=======+
+ * 
+ * 2、block的总体格式：
+ *      +=======+============+
+ *      | token | block data |
+ *      +=======+============+
+ *
+ *  block分为literal和match两类.
+ *  2.1 Literal
+ *    Literal 的总体格式如下，M1M0 表示L1~Ln+5的占用字节,L1~Ln+5表示
+ *    表示block data的长度。
+ *        +-----------------+-+ ... +-+============+
+ *        | 0M1M0 Ln+5~Ln+1 |  Ln~L1  | block data |
+ *        +-----------------+-+ ... +-+============+
+ *    例子1: Literal 长度在1b~31b的长度
+ *        +-----------+============+
+ *        | 000 L5-L1 | block data |
+ *        +-----------+============+
+ *    例子2: Literal长度在32b~8k之间
+ *        +------------+-------+============+
+ *        | 001 L13-L9 | L8-L1 | block data |
+ *        +------------+-------+============+
+ *    例子3: Literal长度在8k~2M之间
+ *        +-------------+--------+-------+============+
+ *        | 001 L21-L17 | L16-L9 | L8-L1 | block data |
+ *        +-------------+--------+-------+============+
+ *  2.1 Match
+ *    Match类型的格式
+ *      +----+
+ *      | 11 
+ *      +
  */
-#if defined(__clang__) || (defined(__GNUC__) && (__GNUC__ > 2))
-#define FASTLZ_LIKELY(c) (__builtin_expect(!!(c), 1))
-#define FASTLZ_UNLIKELY(c) (__builtin_expect(!!(c), 0))
-#else
-#define FASTLZ_LIKELY(c) (c)
-#define FASTLZ_UNLIKELY(c) (c)
-#endif
 
-/*
- * Specialize custom 64-bit implementation for speed improvements.
+/**
+ *  不同level下的滑窗大小：
+ *   level  ~  sliding windows
+ *     0    ~       4k
+ *     1    ~       8k
+ *     2    ~       16k
+ *     3    ~       32k
+ *     4    ~       64k
+ *     5    ~       128k
+ *     6    ~       256k
+ *     7    ~       512k
+ *     8    ~       1M
+ *     9    ~       2M
  */
-#if defined(__x86_64__) || defined(_M_X64) || defined(__aarch64__)
-#define FLZ_ARCH64
-#endif
-
-/*
- * Workaround for DJGPP to find uint8_t, uint16_t, etc.
- */
-#if defined(__MSDOS__) && defined(__GNUC__)
-#include <stdint-gcc.h>
-#endif
-
-#if defined(FASTLZ_USE_MEMMOVE) && (FASTLZ_USE_MEMMOVE == 0)
-
-static void fastlz_memmove(uint8_t* dest, const uint8_t* src, uint32_t count) {
-  do {
-    *dest++ = *src++;
-  } while (--count);
-}
-
-static void fastlz_memcpy(uint8_t* dest, const uint8_t* src, uint32_t count) {
-  return fastlz_memmove(dest, src, count);
-}
-
-#else
-
-#include <string.h>
-
-static void fastlz_memmove(uint8_t* dest, const uint8_t* src, uint32_t count) {
-  if ((count > 4) && (dest >= src + count)) {
-    memmove(dest, src, count);
-  } else {
-    switch (count) {
-      default:
-        do {
-          *dest++ = *src++;
-        } while (--count);
-        break;
-      case 3:
-        *dest++ = *src++;
-      case 2:
-        *dest++ = *src++;
-      case 1:
-        *dest++ = *src++;
-      case 0:
-        break;
+int lz_option_preset(lz_options_t *option, int level)
+{
+    if (level > LZ_MAX_COMPRESS_LEVEL ||
+        level < LZ_MIN_COMPRESS_LEVEL) {
+      return TOY_ERR_LZ_LEVEL_INVALID;
     }
-  }
+
+    uint8_t win_size_pow2[] = {
+      12, 13, 14, 15, 16, 17, 18, 19, 20, 21
+    };
+
+    option->sliding_win_size = ((uint32_t)1) << win_size_pow2[level];
+    return TOY_OK;
 }
-
-static void fastlz_memcpy(uint8_t* dest, const uint8_t* src, uint32_t count) { memcpy(dest, src, count); }
-
-#endif
-
-#if defined(FLZ_ARCH64)
-
-static uint32_t flz_readu32(const void* ptr) { return *(const uint32_t*)ptr; }
-
-static uint32_t flz_cmp(const uint8_t* p, const uint8_t* q, const uint8_t* r) {
-  const uint8_t* start = p;
-
-  if (flz_readu32(p) == flz_readu32(q)) {
-    p += 4;
-    q += 4;
-  }
-  while (q < r)
-    if (*p++ != *q++) break;
-  return p - start;
-}
-
-#endif /* FLZ_ARCH64 */
-
-#if !defined(FLZ_ARCH64)
-
-static uint32_t flz_readu32(const void* ptr) {
-  const uint8_t* p = (const uint8_t*)ptr;
-  return (p[3] << 24) | (p[2] << 16) | (p[1] << 8) | p[0];
-}
-
-static uint32_t flz_cmp(const uint8_t* p, const uint8_t* q, const uint8_t* r) {
-  const uint8_t* start = p;
-  while (q < r)
-    if (*p++ != *q++) break;
-  return p - start;
-}
-
-#endif /* !FLZ_ARCH64 */
 
 #define MAX_COPY 32
 #define MAX_LEN 264 /* 256 + 8 */
@@ -335,10 +300,71 @@ static uint8_t* flz2_match(uint32_t len, uint32_t distance, uint8_t* op) {
   return op;
 }
 
-int lz2_compress(const void* input, int length, void* output)
-{
-    dict_t *dict = dict_create(NULL);
+
+int fastlz2_decompress(const void* input, int length, void* output, int maxout) {
+  const uint8_t* ip = (const uint8_t*)input;
+  const uint8_t* ip_limit = ip + length;
+  const uint8_t* ip_bound = ip_limit - 2;
+  uint8_t* op = (uint8_t*)output;
+  uint8_t* op_limit = op + maxout;
+  uint32_t ctrl = (*ip++) & 31;
+
+  while (1) {
+    if (ctrl >= 32) {
+      uint32_t len = (ctrl >> 5) - 1;
+      uint32_t ofs = (ctrl & 31) << 8;
+      const uint8_t* ref = op - ofs - 1;
+
+      uint8_t code;
+      if (len == 7 - 1) do {
+          FASTLZ_BOUND_CHECK(ip <= ip_bound);
+          code = *ip++;
+          len += code;
+        } while (code == 255);
+      code = *ip++;
+      ref -= code;
+      len += 3;
+
+      /* match from 16-bit distance */
+      if (FASTLZ_UNLIKELY(code == 255))
+        if (FASTLZ_LIKELY(ofs == (31 << 8))) {
+          FASTLZ_BOUND_CHECK(ip < ip_bound);
+          ofs = (*ip++) << 8;
+          ofs += *ip++;
+          ref = op - ofs - MAX_L2_DISTANCE - 1;
+        }
+
+      FASTLZ_BOUND_CHECK(op + len <= op_limit);
+      FASTLZ_BOUND_CHECK(ref >= (uint8_t*)output);
+      fastlz_memmove(op, ref, len);
+      op += len;
+    } else {
+      ctrl++;
+      FASTLZ_BOUND_CHECK(op + ctrl <= op_limit);
+      FASTLZ_BOUND_CHECK(ip + ctrl <= ip_limit);
+      fastlz_memcpy(op, ip, ctrl);
+      ip += ctrl;
+      op += ctrl;
+    }
+
+    if (FASTLZ_UNLIKELY(ip >= ip_limit)) break;
+    ctrl = *ip++;
+  }
+
+  return op - (uint8_t*)output;
 }
+
+int fastlz_decompress(const void* input, int length, void* output, int maxout) {
+  /* magic identifier for compression level */
+  int level = ((*(const uint8_t*)input) >> 5) + 1;
+
+  if (level == 1) return fastlz1_decompress(input, length, output, maxout);
+  if (level == 2) return fastlz2_decompress(input, length, output, maxout);
+
+  /* unknown level, trigger error */
+  return 0;
+}
+
 
 int fastlz2_compress(const void* input, int length, void* output) {
   /* ip应该是input */
@@ -420,76 +446,9 @@ int fastlz2_compress(const void* input, int length, void* output) {
   return op - (uint8_t*)output;
 }
 
-int fastlz2_decompress(const void* input, int length, void* output, int maxout) {
-  const uint8_t* ip = (const uint8_t*)input;
-  const uint8_t* ip_limit = ip + length;
-  const uint8_t* ip_bound = ip_limit - 2;
-  uint8_t* op = (uint8_t*)output;
-  uint8_t* op_limit = op + maxout;
-  uint32_t ctrl = (*ip++) & 31;
-
-  while (1) {
-    if (ctrl >= 32) {
-      uint32_t len = (ctrl >> 5) - 1;
-      uint32_t ofs = (ctrl & 31) << 8;
-      const uint8_t* ref = op - ofs - 1;
-
-      uint8_t code;
-      if (len == 7 - 1) do {
-          FASTLZ_BOUND_CHECK(ip <= ip_bound);
-          code = *ip++;
-          len += code;
-        } while (code == 255);
-      code = *ip++;
-      ref -= code;
-      len += 3;
-
-      /* match from 16-bit distance */
-      if (FASTLZ_UNLIKELY(code == 255))
-        if (FASTLZ_LIKELY(ofs == (31 << 8))) {
-          FASTLZ_BOUND_CHECK(ip < ip_bound);
-          ofs = (*ip++) << 8;
-          ofs += *ip++;
-          ref = op - ofs - MAX_L2_DISTANCE - 1;
-        }
-
-      FASTLZ_BOUND_CHECK(op + len <= op_limit);
-      FASTLZ_BOUND_CHECK(ref >= (uint8_t*)output);
-      fastlz_memmove(op, ref, len);
-      op += len;
-    } else {
-      ctrl++;
-      FASTLZ_BOUND_CHECK(op + ctrl <= op_limit);
-      FASTLZ_BOUND_CHECK(ip + ctrl <= ip_limit);
-      fastlz_memcpy(op, ip, ctrl);
-      ip += ctrl;
-      op += ctrl;
-    }
-
-    if (FASTLZ_UNLIKELY(ip >= ip_limit)) break;
-    ctrl = *ip++;
-  }
-
-  return op - (uint8_t*)output;
-}
-
-int lz_compress(const void* input, int length, void* output)
+int lz_compress(const void *in, uint32_t in_len, void *out, uint32_t out_len,
+    lz_options_t *option);
 {
-  if (length < 65536) {
-      return lz1_compress(input, length, output);
-  }
 
-  return lz2_compress(input, length, output);
-}
-
-int fastlz_decompress(const void* input, int length, void* output, int maxout) {
-  /* magic identifier for compression level */
-  int level = ((*(const uint8_t*)input) >> 5) + 1;
-
-  if (level == 1) return fastlz1_decompress(input, length, output, maxout);
-  if (level == 2) return fastlz2_decompress(input, length, output, maxout);
-
-  /* unknown level, trigger error */
-  return 0;
 }
 
