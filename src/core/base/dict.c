@@ -80,7 +80,10 @@ static void dict_ht_destroy(dict_t *dict, dict_htable_t *ht)
             dict_entry_free(dict, entry);
             entry = next_entry;
         }
+
+        ht->table[idx] = NULL;
     }
+    free(ht->table);
 }
 
 void dict_destroy(dict_t *dict)
@@ -93,6 +96,7 @@ void dict_destroy(dict_t *dict)
             continue;
         }
         dict_ht_destroy(dict, &dict->ht[ht_idx]);
+        
     }
     free(dict);
 }
