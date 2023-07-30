@@ -10,6 +10,8 @@
 
 #include "pub_def.h"
 #include "dict.h"
+#include "bit_op.h"
+#include "lz_backward.h"
 
 /**
  * 1、压缩文件格式：
@@ -49,6 +51,11 @@
  *      +---------------+-+ ... +-+-+ ... +-+
  */
 
+
+#define MIN_INPUT_LEN 4
+#define SEQ_SIZE 4
+#define INVALID_POS 0xffff
+
 /**
  *  不同level下的滑窗大小：
  *   level  ~  sliding windows
@@ -63,57 +70,45 @@
  *     8    ~       1M
  *     9    ~       2M
  */
-static int lz_calculate_block_size(int level)
+static int lz_calculate_sliding_win(int level)
 {
-    if (level > LZ_MAX_COMPRESS_LEVEL ||
-        level < LZ_MIN_COMPRESS_LEVEL) {
-      return TOY_ERR_LZ_LEVEL_INVALID;
-    }
-
     uint8_t block_size_pow2[] = {
       12, 13, 14, 15, 16, 17, 18, 19, 20, 21
     };
 
-    option->block_size = ((uint32_t)1) << block_size_pow2[level];
-    return TOY_OK;
+    return ((uint32_t)1) << block_size_pow2[level];
 }
 
-lz_compressor_t *lz_create_compressor(lz_options_t *option,
-    const uint8_t *in, uint32_t in_len)
+lz_compressor_t *lz_create_compressor(lz_option_t *option)
 {
-    lz_compressor_t *compressor = calloc(1, sizeof(*compressor));
-    if (!compressor) {
+    if (option->level > LZ_MAX_COMPRESS_LEVEL ||
+        option->level < LZ_MIN_COMPRESS_LEVEL) {
+      return TOY_ERR_LZ_LEVEL_INVALID;
+    }
+
+    lz_compressor_t *comp = calloc(1, sizeof(*comp));
+    if (!comp) {
         return NULL;
     }
 
-    compressor->in.stream = in;
-    compressor->in.total_len = in_len;
-    compressor->in.cur_pos = 0;
+    comp->backward_dict = lz_create_backward_dict();
+    if (comp->backward_dict == NULL) {
+        return NULL;
+    }
 
-    compressor->block_size = lz_calculate_block_size(option->level);
-    return compressor;
+    comp->sliding_win = lz_calculate_sliding_win(option->level);
+    return comp;
 }
 
-#define MIN_INPUT_LEN 4
-#define SEQ_SIZE 4
-#define INVALID_POS 0xffff
-
-typedef struct {
-    uint32_t seq;
-    uint32_t pos;
-} lz_refpos_t;
-
-static uint32_t tz_hash_func(const void *key)
+void lz_destroy_compressor(lz_compressor_t *comp)
 {
-    lz_refpos_t *node = (lz_refpos_t *)key;
-    return dict_int_hash_func(node->seq);
-}
+    if (comp->backward_dict != NULL) {
+        lz_destroy_backward_dict(comp->backward_dict);
+    }
 
-static bool tz_key_match(const void *key1, const void *key2)
-{
-    lz_refpos_t *node1 = (lz_refpos_t *)key1;
-    lz_refpos_t *node2 = (lz_refpos_t *)key2;
-    return node1->seq == node2->key2;
+    if (!comp) {
+        free(comp);
+    }
 }
 
 static uint32_t lz_read_seq(const void *ptr)
@@ -121,61 +116,26 @@ static uint32_t lz_read_seq(const void *ptr)
     return *(uint32_t *)ptr;
 }
 
-/* 创建lz字典 */
-static dict_t *lz_create_dict()
+static void lz_encode_literals_header(uint8_t *out, uint32_t *out_pos,
+    uint32_t out_len, uint32_t literal_len)
 {
-    dict_config_t dict_config = {
-        .priv_data = NULL,
-        .hash_func = tz_hash_func,
-        .key_match = tz_key_match
-    };
-
-    dict_t *dict = dict_create(&dict_config);
-    if (dict != NULL) {
-        return NULL;
+    if (literal_len <= 31) {
+        out[*out_pos] = literal_len;
+        *out_pos += 1;
+        return;
+    } else if (literal_len <= (((uint32_t)1) << 13 - 1)) {
+        out[*out_pos + 1] = (literal_len & 0xff);
+        out[*out_pos] = (literal_len >> 8) & 0xff;
+        out[*out_pos] |= 0x20;
+        *out_pos += 2;
+        return;
+    } else if (literal_len <= (((uint32_t)1) << 21 - 1)) {
+        out[*out_pos + 2] = (literal_len & 0xff);
+        out[*out_pos + 1] = ((literal_len >> 8) & 0xff);
+        out[*out_pos] = (literal_len >> 16) & 0xff;
+        out[*out_pos] |= 0x40;
+        return;
     }
-
-    return dict;
-}
-
-static lz_refpos_t *lz_get_refpos(dict_t *lz_dict, uint32_t seq)
-{
-    lz_refpos_t key = {
-        .seq = seq, 
-    };
-
-    dict_entry_t *entry = dict_find(lz_dict, &key);
-    if (entry == NULL) {
-        return NULL;
-    }
-
-    return entry->record;
-}
-
-static int lz_update_refpos(dict_t *lz_dict, uint32_t seq, uint32_t refpos)
-{
-    lz_refpos_t key = {
-        .seq = seq,
-        .pos = refpos
-    };
-
-    dict_entry_t *entry = dict_find(lz_dict, &key);
-    if (entry != NULL) {
-        ((lz_refpos_t *)entry->record)->pos = refpos;
-        return TOY_OK;
-    }
-
-    int ret = dict_add(lz_dict, &key);
-    if (ret != TOY_OK) {
-        return ret;
-    }
-
-    return TOY_OK;;
-}
-
-static void lz_destroy_dict(dict_t *lz_dict)
-{
-    dict_destroy(lz_dict);
 }
 
 static void lz_encode_literals(const uint8_t *in, uint32_t start, uint32_t end,
@@ -184,67 +144,124 @@ static void lz_encode_literals(const uint8_t *in, uint32_t start, uint32_t end,
     if (out_len - *out_pos < end - start) {
         return TOY_ERR_LZ_OUT_MEM_UNSUFFICIENT;
     }
+    lz_encode_literals_header(out, out_pos, out_len, end - start);
+
     (void)memcpy(out + *out_pos, in + start, end - out);
     *out_pos = *out_pos + (end - start);
 }
 
-static void lz_encode_match(const uint8_t *in, uint32_t ref_pos,
-    uint32_t cur_pos, uint32_t in_len, uint8_t *out, uint32_t *out_pos, uint32_t out_len)
+static uint32_t lz_get_match_len(const uint8_t *in, uint32_t in_len,
+    uint32_t ref_pos, uint32_t cur_pos)
 {
-
+    uint32_t off = 0;
+    while (ref_pos + off < cur_pos && cur_pos + off < in_len) {
+        if (in[ref_pos + off] == in[cur_pos + off]) {
+            off++;
+            continue;
+        }
+        break;
+    }
+    return off;
 }
 
-static int lz_compress_block(const uint8_t *in, uint32_t start, uint32_t end,
-            uint8_t *out, uint32_t out_len, uint32_t *out_pos)
+static uint32_t lz_encode_match(const uint8_t *in, uint32_t in_len, uint32_t ref_pos,
+    uint32_t cur_pos, uint8_t *out, uint32_t *out_pos, uint32_t out_len)
 {
-    /* 初始化哈希表 */
-    dict_t *lz_dict = lz_create_dict();
-    if (lz_dict == NULL) {
-        return TOY_ERR_LZ_DICT_CREATE_FAIL;
-    }
+    uint32_t match_len = lz_get_match_len(in, in_len, ref_pos, cur_pos);
+    uint32_t tmp_match_len = match_len;
+    uint32_t distance = cur_pos - ref_pos;
 
-    uint32_t pos = start;
-    uint32_t anchor = start;
-    while (pos < end - SEQ_SIZE) {
-        uint32_t seq = lz_read_seq(in + pos);
-        lz_refpos_t *refpos = lz_get_refpos(lz_dict, seq);
-        if (refpos != NULL) {
-            lz_encode_literals(in, anchor, refpos->pos, out, out_pos, out_len);
-            lz_encode_match();
-            // anchor move
-            pos = anchor;
-        } else {
-            pos = pos + 1;
-        }
-
-        lz_update_refpos(lz_dict, seq, pos);
-    }
+    out[*out_pos] = 0;
+    out[*out_pos] |= 0xc0;
     
-    lz_destroy_dict(lz_dict);
+    uint8_t match_len_bytes = bit_get_bytes(match_len);
+    uint8_t distance_bytes = bit_get_bytes(distance);
+
+    out[*out_pos] |= (match_len_bytes << 3);
+    out[*out_pos] |= distance_bytes;
+    uint8_t move_len = match_len_bytes + distance_bytes;
+    uint8_t tmp_match_len_bytes = match_len_bytes;
+
+    // 长度
+    while (match_len_bytes > 0) {
+        out[*out_pos + match_len_bytes] = match_len & 0xff;
+        match_len_bytes--;
+        match_len = match_len >> 8;
+    }
+
+    // 距离
+    while (distance_bytes > 0) {
+        out[*out_pos + tmp_match_len_bytes + distance_bytes] = match_len & 0xff;
+        distance_bytes--;
+        distance = distance >> 8;
+    }
+    *out_pos += move_len + 1;
+
+    return tmp_match_len;
+}
+
+static int lz_encode_stream(lz_compressor_t *comp, uint32_t *anchor)
+{
+    lz_stream_t *strm = &comp->strm;
+
+    uint32_t seq = lz_read_seq(strm->in + strm->in_pos);
+
+    lz_backward_t *backward = lz_get_backward(comp->backward_dict, seq);
+    if (backward == NULL) {
+        return 1;
+    }
+
+    lz_encode_literals(in, anchor, refpos->pos, out, out_pos, out_len);
+
+     uint32_t match_len = 
+        lz_encode_match(in, end, refpos->pos, pos, out, out_pos, out_len);
+
+        // anchor move
+        anchor = pos + match_len;
+    }
+
     return TOY_OK;
 }
 
-int lz_compress(const uint8_t *in, uint32_t in_len, uint8_t *out, uint32_t out_len,
-    lz_options_t *option);
+static int lz_start_compress(lz_compressor_t *comp)
 {
-    if (in_len < MIN_INPUT_LEN) {
+    lz_stream_t *strm = &comp->strm;
+
+    uint32_t anchor = 0;
+    while (anchor < strm->in_size - SEQ_SIZE) {
+        int ret = lz_encode_stream(comp, &anchor);
+        if (ret != TOY_OK) {
+            return ret;
+        }
+
+        lz_createorset_backward(comp->backward_dict, seq, strm->in_pos);
+        strm->in_pos += skip;
+    }
+    
+    return TOY_OK;
+}
+
+static void lz_init_strm(lz_compressor_t *comp, lz_stream_t *strm)
+{
+    comp->strm = *strm;
+    comp->strm.in_pos = 0;
+    comp->strm.out_pos = 0;
+    comp->strm.out_total = 0;
+}
+
+int lz_compress(lz_compressor_t *comp, lz_stream_t *strm)
+{
+    if (strm->in_size < MIN_INPUT_LEN) {
         return TOY_ERR_LZ_INVALID_PARA;
     }
 
-    uint32_t block_start = 0;
-    uint32_t block_size = option->block_size;
-    uint32_t out_pos = 0;
-    while (block_start < in_len) {
-        uint32_t block_end = block_start + block_size < in_len ?
-            block_start + block_size : in_len;
+    lz_init_strm(comp, strm);
 
-        int ret = lz_compress_block(in, block_start, block_end, out, out_len, &out_pos);
-        if (ret != TOY_OK) {
-          return ret;
-        }
-
-        block_start = block_end;
+    int ret = lz_start_compress(comp);
+    if (ret != TOY_OK) {
+        return ret;
     }
+
     return TOY_OK;
 }
 
