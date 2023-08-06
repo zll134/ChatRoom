@@ -116,38 +116,38 @@ static uint32_t lz_read_seq(const void *ptr)
     return *(uint32_t *)ptr;
 }
 
-static void lz_encode_literals_header(uint8_t *out, uint32_t *out_pos,
-    uint32_t out_len, uint32_t literal_len)
+static void lz_encode_literals_header(lz_stream_t *strm,
+    uint32_t literal_len)
 {
     if (literal_len <= 31) {
-        out[*out_pos] = literal_len;
-        *out_pos += 1;
+        out[strm->out_pos] = literal_len;
+        strm->out_pos += 1;
         return;
     } else if (literal_len <= (((uint32_t)1) << 13 - 1)) {
-        out[*out_pos + 1] = (literal_len & 0xff);
-        out[*out_pos] = (literal_len >> 8) & 0xff;
-        out[*out_pos] |= 0x20;
-        *out_pos += 2;
+        out[strm->out_pos + 1] = (literal_len & 0xff);
+        out[strm->out_pos] = (literal_len >> 8) & 0xff;
+        out[strm->out_pos] |= 0x20;
+        strm->out_pos += 2;
         return;
     } else if (literal_len <= (((uint32_t)1) << 21 - 1)) {
-        out[*out_pos + 2] = (literal_len & 0xff);
-        out[*out_pos + 1] = ((literal_len >> 8) & 0xff);
-        out[*out_pos] = (literal_len >> 16) & 0xff;
-        out[*out_pos] |= 0x40;
+        out[strm->out_pos + 2] = (literal_len & 0xff);
+        out[strm->out_pos + 1] = ((literal_len >> 8) & 0xff);
+        out[strm->out_pos] = (literal_len >> 16) & 0xff;
+        out[strm->out_pos] |= 0x40;
         return;
     }
 }
 
-static void lz_encode_literals(const uint8_t *in, uint32_t start, uint32_t end,
-    uint8_t *out, uint32_t *out_pos, uint32_t out_len)
+static void lz_encode_literals(lz_stream_t *strm, uint32_t start, uint32_t end)
 {
-    if (out_len - *out_pos < end - start) {
+    uint32_t 
+    if (strm->out_len - strm->out_pos < end - start) {
         return TOY_ERR_LZ_OUT_MEM_UNSUFFICIENT;
     }
-    lz_encode_literals_header(out, out_pos, out_len, end - start);
+    lz_encode_literals_header(strm->out, strm->out_pos, end - start);
 
-    (void)memcpy(out + *out_pos, in + start, end - out);
-    *out_pos = *out_pos + (end - start);
+    (void)memcpy(strm->out + strm->out_pos, strm->in + start, end - start);
+    strm->out_pos += (end - start);
 }
 
 static uint32_t lz_get_match_len(const uint8_t *in, uint32_t in_len,
@@ -164,61 +164,59 @@ static uint32_t lz_get_match_len(const uint8_t *in, uint32_t in_len,
     return off;
 }
 
-static uint32_t lz_encode_match(const uint8_t *in, uint32_t in_len, uint32_t ref_pos,
-    uint32_t cur_pos, uint8_t *out, uint32_t *out_pos, uint32_t out_len)
+static uint32_t lz_encode_match(lz_stream_t *strm, uint32_t ref_pos)
 {
-    uint32_t match_len = lz_get_match_len(in, in_len, ref_pos, cur_pos);
+    uint32_t match_len = lz_get_match_len(strm->in, strm->in_len, ref_pos, strm->in_pos);
     uint32_t tmp_match_len = match_len;
-    uint32_t distance = cur_pos - ref_pos;
+    uint32_t distance = strm->in_pos - ref_pos;
 
-    out[*out_pos] = 0;
-    out[*out_pos] |= 0xc0;
+    uint8_t *out = strm->out;
+    out[strm->out_pos] = 0;
+    out[strm->out_pos] |= 0xc0;
     
     uint8_t match_len_bytes = bit_get_bytes(match_len);
     uint8_t distance_bytes = bit_get_bytes(distance);
 
-    out[*out_pos] |= (match_len_bytes << 3);
-    out[*out_pos] |= distance_bytes;
+    out[strm->out_pos] |= (match_len_bytes << 3);
+    out[strm->out_pos] |= distance_bytes;
     uint8_t move_len = match_len_bytes + distance_bytes;
     uint8_t tmp_match_len_bytes = match_len_bytes;
 
     // 长度
     while (match_len_bytes > 0) {
-        out[*out_pos + match_len_bytes] = match_len & 0xff;
+        out[strm->out_pos + match_len_bytes] = match_len & 0xff;
         match_len_bytes--;
         match_len = match_len >> 8;
     }
 
     // 距离
     while (distance_bytes > 0) {
-        out[*out_pos + tmp_match_len_bytes + distance_bytes] = match_len & 0xff;
+        out[strm->out_pos + tmp_match_len_bytes + distance_bytes] = match_len & 0xff;
         distance_bytes--;
         distance = distance >> 8;
     }
-    *out_pos += move_len + 1;
+    strm->out_pos += move_len + 1;
 
     return tmp_match_len;
 }
 
-static int lz_encode_stream(lz_compressor_t *comp, uint32_t *anchor)
+static int lz_encode_stream(lz_compressor_t *comp, lz_stream_t *strm, uint32_t *anchor)
 {
-    lz_stream_t *strm = &comp->strm;
-
     uint32_t seq = lz_read_seq(strm->in + strm->in_pos);
 
     lz_backward_t *backward = lz_get_backward(comp->backward_dict, seq);
     if (backward == NULL) {
-        return 1;
+        lz_createorset_backward(comp->backward_dict, seq, strm->in_pos);
+        strm->in_pos++;
+        return TOY_ERR_LZ_BACKWARD_NOT_EXIST;
     }
 
-    lz_encode_literals(in, anchor, refpos->pos, out, out_pos, out_len);
+    lz_encode_literals(strm, anchor, refpos->pos);
+    uint32_t match_len = 
+    lz_encode_match(strm, refpos->pos);
 
-     uint32_t match_len = 
-        lz_encode_match(in, end, refpos->pos, pos, out, out_pos, out_len);
-
-        // anchor move
-        anchor = pos + match_len;
-    }
+    // anchor move
+    anchor = strm->in_pos + match_len;
 
     return TOY_OK;
 }
@@ -228,25 +226,27 @@ static int lz_start_compress(lz_compressor_t *comp)
     lz_stream_t *strm = &comp->strm;
 
     uint32_t anchor = 0;
-    while (anchor < strm->in_size - SEQ_SIZE) {
-        int ret = lz_encode_stream(comp, &anchor);
+    while (strm->in_pos < strm->in_size - SEQ_SIZE) {
+        int ret = lz_encode_stream(comp, strm, &anchor);
+        if (ret == TOY_ERR_LZ_BACKWARD_NOT_EXIST) {
+            continue;
+        }
         if (ret != TOY_OK) {
             return ret;
         }
-
-        lz_createorset_backward(comp->backward_dict, seq, strm->in_pos);
-        strm->in_pos += skip;
     }
     
+    if (anchor < strm->out_size) {
+        lz_encode_literals(strm, anchor, strm->out_size);
+    }
     return TOY_OK;
 }
 
-static void lz_init_strm(lz_compressor_t *comp, lz_stream_t *strm)
+static void lz_init_strm(lz_stream_t *strm)
 {
-    comp->strm = *strm;
-    comp->strm.in_pos = 0;
-    comp->strm.out_pos = 0;
-    comp->strm.out_total = 0;
+    strm->in_pos = 0;
+    strm->out_pos = 0;
+    strm->out_total = 0;
 }
 
 int lz_compress(lz_compressor_t *comp, lz_stream_t *strm)
@@ -255,7 +255,7 @@ int lz_compress(lz_compressor_t *comp, lz_stream_t *strm)
         return TOY_ERR_LZ_INVALID_PARA;
     }
 
-    lz_init_strm(comp, strm);
+    lz_init_strm(strm);
 
     int ret = lz_start_compress(comp);
     if (ret != TOY_OK) {
@@ -265,3 +265,80 @@ int lz_compress(lz_compressor_t *comp, lz_stream_t *strm)
     return TOY_OK;
 }
 
+static bool lz_is_literals_token(lz_stream_t *strm)
+{
+    uint8_t token = *(uint8_t *)strm->in;
+
+    if (token & 128 > 0) {
+        return false;
+    }
+    return true;
+}
+
+static int lz_decompress_literals(lz_stream_t *strm)
+{
+    uint32_t literal_len = 0;
+    uint8_t token = *(uint8_t *)strm->in;
+
+    literal_len = token & 0x1f;
+    uint8_t literal_len_byte = (token >> 5) & 0x3;
+ 
+    while (literal_len_byte > 0) {
+        strm->in_pos += 1;
+        literal_len = (literal << 8) + strm->in[strm->in_pos];
+        literal_len_byte--;
+    }
+    strm->in_pos;
+    memcpy(strm->out + strm->out_pos, strm->in + strm->in_pos, literal_len);
+    strm->in_pos += literal_len;
+    return 0;
+}
+
+static int lz_decompress_match(lz_stream_t *strm)
+{
+    uint8_t token = *(uint8_t *)strm->in;
+    uint8_t len_bytes = (token >> 3) & 0x7;
+    uint8_t dist_bytes = token & 0x7;
+
+    strm->in_pos++;
+    uint32_t len = 0;
+    while (len_bytes > 0) {
+        len = (len << 8) + (uint8_t)strm->in[strm->in_pos];
+        strm->in_pos++;
+        len_bytes--;
+    }
+
+    uint32_t dist = 0;
+    while (dist_bytes > 0) {
+        dist = (dist << 8) + (uint8_t)strm->in[strm->in_pos];
+        strm->in_pos++;
+        dist_bytes--;
+    }
+
+    memcpy(strm->out + strm->out_pos, strm->in + strm->in_pos - dist, len);
+    strm->out_pos += len;
+    return 0;
+}
+
+static int lz_start_decompress(lz_compressor_t *comp)
+{
+    lz_stream_t *strm = &comp->strm;
+
+    if (lz_is_literals_token(strm)) {
+        return lz_decompress_literals(strm);
+    } else {
+        return lz_decompress_match(strm);
+    }
+    return TOY_OK;
+}
+
+int lz_decompress(lz_compressor_t *comp, lz_stream_t *strm)
+{
+    if (strm->in_size < MIN_INPUT_LEN) {
+        return TOY_ERR_LZ_INVALID_PARA;
+    }
+
+    lz_init_strm(strm);
+
+    return lz_start_decompress(comp);
+}

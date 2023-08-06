@@ -63,10 +63,6 @@ TEST(dict_test, basic_add_and_delete_expect_ok)
     ASSERT_EQ(ret, TOY_OK);
     ASSERT_EQ(dict_get_entry_num(g_dict), 0);
 }
-void zhanglele()
-{
-
-}
 
 TEST(dict_test, batch_add_and_delete_expect_ok)
 {

@@ -27,7 +27,6 @@ typedef struct {
 } lz_stream_t;
 
 typedef struct {
-    lz_stream_t strm;      // 输入与输出字节流
     uint32_t sliding_win;  // 滑窗大小
     dict_t backward_dict;  // 前向引用字典
 } lz_compressor_t;
@@ -50,5 +49,12 @@ void lz_destroy_compressor(lz_compressor_t *compressor);
  *  @return: TOY_OK表示压缩成功
  */
 int lz_compress(lz_compressor_t *comp, lz_stream_t *strm);
+
+/** 字节流解压
+ *  @param: comp: [in] 压缩器对象
+ *  @param: strm: [in] 输入与输出字节流
+ *  @return: TOY_OK表示解压成功
+ */
+int lz_decompress(lz_compressor_t *comp, lz_stream_t *strm);
 
 #endif
