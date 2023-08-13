@@ -10,6 +10,12 @@
 #include <stdbool.h>
 
 enum {
+    FONT_RED = 31,
+    FONT_GREEN = 32,
+    FONT_WHITE = 37,
+};
+
+enum {
     ASSERTION_TYPE_ASSERT, /* 检查点失败时，退出函数 */
     ASSERTION_TYPE_EXPECT, /* 检查点失败时，继续往下执行 */
     ASSERTION_TYPE_MAX
@@ -40,6 +46,8 @@ void unit_test_assert_boolean(bool condition, bool expected, uint32_t assert_typ
 
 void unit_test_assert_integer(uint32_t actual, uint32_t expected, uint32_t assert_type, 
     const char *file, uint32_t line);
+
+void unit_print(uint32_t font_color, const char *fmt, ...);
 
 /* 定义测试套准备函数 */
 #define TEST_SETUP(group) \
@@ -119,5 +127,14 @@ void unit_test_assert_integer(uint32_t actual, uint32_t expected, uint32_t asser
 
 #define ASSERT_EQ(actual, expected) \
     unit_test_assert_integer((actual), (expected), ASSERTION_TYPE_ASSERT, __FILE__, __LINE__);
+
+
+/* 打印 */
+#define TEST_INFO(...) \
+    do { \
+        unit_print(FONT_GREEN, "[---INFO---] "); \
+        unit_print(FONT_WHITE, __VA_ARGS__); \
+        unit_print(FONT_WHITE, "\n"); \
+    } while (0);
 
 #endif

@@ -5,11 +5,12 @@ source $project_path/build/build_src.sh
 source $project_path/build/build_test.sh
 source $project_path/build/run_test.sh
 
-increment=""
+increment="false"
 clean_flag=""
 build_test=""
 run_test=""
 test_module=""
+
 function usage()
 {
     echo "Script usage:"
@@ -50,7 +51,8 @@ if [ "$clean_flag"x == "true"x ]; then
     exit 0
 fi
 
-if [ "$increment"x == "true"x ];then
+# 非增量编译需要删除output目录
+if [ "$increment"x == "false"x ];then
     [ -d $project_path/output ] && rm -rf $project_path/output
 fi
 

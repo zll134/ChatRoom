@@ -7,8 +7,11 @@
 #include "lz_backward.h"
 
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "pub_def.h"
+#include "hash.h"
 #include "dict.h"
 
 static uint32_t lz_backward_hash_func(const void *key)
@@ -21,7 +24,7 @@ static bool lz_backward_key_match(const void *key1, const void *key2)
 {
     lz_backward_t *node1 = (lz_backward_t *)key1;
     lz_backward_t *node2 = (lz_backward_t *)key2;
-    return node1->seq == node2->key2;
+    return node1->seq == node2->seq;
 }
 
 /* 创建后向引用字典 */
@@ -34,7 +37,7 @@ dict_t *lz_create_backward_dict()
     };
 
     dict_t *dict = dict_create(&dict_config);
-    if (dict != NULL) {
+    if (dict == NULL) {
         return NULL;
     }
 
@@ -64,11 +67,11 @@ int lz_createorset_backward(dict_t *dict, uint32_t seq, uint32_t refpos)
 
     dict_entry_t *entry = dict_find(dict, &key);
     if (entry != NULL) {
-        ((lz_backward_t *)entry->record)->pos = refpos;
+        ((lz_backward_t *)entry->record)->refpos = refpos;
         return TOY_OK;
     }
 
-    int ret = dict_add(dict, &key);
+    int ret = dict_add(dict, &key, sizeof(key));
     if (ret != TOY_OK) {
         return ret;
     }
