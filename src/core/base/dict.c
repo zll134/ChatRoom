@@ -66,6 +66,10 @@ dict_t *dict_create(dict_config_t *config)
 static void dict_entry_free(dict_t *dict, dict_entry_t *entry)
 {
     if (entry != NULL) {
+        // record 去初始化
+        if (dict->config.record_uninit != NULL) {
+            dict->config.record_uninit(entry->record);
+        }
         free(entry->record);
         free(entry);
     }
@@ -257,6 +261,15 @@ static dict_entry_t *dict_entry_create(dict_t *dict,
 
     memcpy(entry->record, record, record_size);
     entry->record_size = record_size;
+
+    // record 初始化
+    if (dict->config.record_init != NULL) {
+        int ret = dict->config.record_init(entry->record);
+        if (ret != TOY_OK) {
+            diag_err("[dict] Record init failed, ret %d.", ret);
+            return NULL;
+        }
+    }
     return entry;
 }
 

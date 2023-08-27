@@ -28,7 +28,7 @@ typedef struct {
 
 typedef struct {
     uint32_t sliding_win;  // 滑窗大小
-    dict_t *backward_dict;  // 前向引用字典
+    dict_t *backward_refs;  // 前向引用字典
 } lz_compressor_t;
 
 /** 创建压缩器

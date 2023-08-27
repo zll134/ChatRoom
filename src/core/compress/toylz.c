@@ -14,7 +14,7 @@
 #include "log.h"
 #include "dict.h"
 #include "bit_op.h"
-#include "lz_backward.h"
+#include "lz_backward_ref.h"
 
 /**
  * 1、压缩文件格式：
@@ -96,8 +96,8 @@ lz_compressor_t *lz_create_compressor(lz_option_t *option)
         return NULL;
     }
 
-    comp->backward_dict = lz_create_backward_dict();
-    if (comp->backward_dict == NULL) {
+    comp->backward_refs = lz_create_backward_ref_dict();
+    if (comp->backward_refs == NULL) {
         diag_err("[compress] Create backward dict failed.");
         return NULL;
     }
@@ -108,8 +108,8 @@ lz_compressor_t *lz_create_compressor(lz_option_t *option)
 
 void lz_destroy_compressor(lz_compressor_t *comp)
 {
-    if (comp != NULL && comp->backward_dict != NULL) {
-        lz_destroy_backward_dict(comp->backward_dict);
+    if (comp != NULL && comp->backward_refs != NULL) {
+        lz_destroy_backward_ref_dict(comp->backward_refs);
     }
 
     if (comp != NULL) {
@@ -212,9 +212,9 @@ static int lz_encode_stream(lz_compressor_t *comp, lz_stream_t *strm, uint32_t *
     uint32_t seq = lz_read_seq(strm->in + strm->in_pos);
 
     // 向前查找具有相同4字节前缀的字符串位置
-    lz_backward_t *backward = lz_get_backward(comp->backward_dict, seq);
+    lz_backward_ref_t *backward = lz_get_backward_ref(comp->backward_refs, seq);
     if (backward == NULL) {
-        lz_createorset_backward(comp->backward_dict, seq, strm->in_pos);
+        lz_insert_backward_ref(comp->backward_refs, seq, strm->in_pos);
         strm->in_pos++;
         return TOY_ERR_LZ_BACKWARD_NOT_EXIST;
     }
@@ -269,8 +269,10 @@ int lz_compress(lz_compressor_t *comp, lz_stream_t *strm)
         return TOY_ERR_LZ_INVALID_PARA;
     }
 
+    // 初始化字节流
     lz_init_strm(strm);
 
+    // 开始压缩
     int ret = lz_start_compress(comp, strm);
     if (ret != TOY_OK) {
         diag_err("[compress] Compress failed, ret: %d.", ret);

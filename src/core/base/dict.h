@@ -29,8 +29,10 @@ typedef struct {
 
 typedef struct {
     void *priv_data;
-    uint32_t (*hash_func)(const void *record);
+    uint32_t (*hash_func)(const void *record);              
     bool (*key_match)(const void *key1, const void *key2);
+    int (*record_init)(void *record);   // record初始化
+    void (*record_uninit)(void *record); // record去初始化
 } dict_config_t;
 
 typedef struct {
