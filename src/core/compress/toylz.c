@@ -160,15 +160,15 @@ static void lz_encode_literals(lz_stream_t *strm, uint32_t start, uint32_t end)
 static uint32_t lz_get_match_len(const uint8_t *in, uint32_t in_len,
     uint32_t ref_pos, uint32_t cur_pos)
 {
-    uint32_t off = 0;
-    while (ref_pos + off < cur_pos && cur_pos + off < in_len) {
-        if (in[ref_pos + off] == in[cur_pos + off]) {
-            off++;
+    uint32_t len = 0;
+    while (ref_pos + len < cur_pos && cur_pos + len < in_len) {
+        if (in[ref_pos + len] == in[cur_pos + len]) {
+            len++;
             continue;
         }
         break;
     }
-    return off;
+    return len;
 }
 
 static uint32_t lz_encode_match(lz_stream_t *strm, uint32_t ref_pos)
@@ -207,27 +207,73 @@ static uint32_t lz_encode_match(lz_stream_t *strm, uint32_t ref_pos)
     return tmp_match_len;
 }
 
+static int lz_get_longest_match(lz_stream_t *strm, uint32_t *refs, uint32_t refs_num)
+{
+    uint32_t max_len = 0;
+    //diag_err("longmatch start: inpos %u", strm->in_pos);
+    uint32_t target_ref_pos = refs[0];
+    for (int i = 0; i < refs_num; i++) {
+        //diag_err("longmatch: refs[%d] %u", i, refs[i]);
+        uint32_t match_len = lz_get_match_len(strm->in, strm->in_size, refs[i], strm->in_pos);
+        if (match_len > max_len) {
+            max_len = match_len;
+            target_ref_pos = refs[i];
+        }
+    }
+    //diag_err("longmatch: %u", target_ref_pos);
+    return target_ref_pos;
+}
+
+void zhanglele()
+{
+
+}
+static int lz_skip_match(lz_compressor_t *comp, lz_stream_t *strm, uint32_t match_len)
+{
+    for (int i = 0; i < match_len; i++) {
+        if (strm->in_pos >= strm->in_size - SEQ_SIZE) {
+            continue;
+        }
+
+        if (strm->in_pos == 34) {
+            zhanglele();
+        }
+        uint32_t seq = lz_read_seq(strm->in + strm->in_pos);
+        int ret = lz_insert_backward_ref(comp->backward_refs, seq, strm->in_pos);
+        if (ret != TOY_OK) {
+            diag_err("[compress] Insert ref failed, in_pos %u.", strm->in_pos);
+            return ret;
+        }
+        
+        strm->in_pos++;
+    }
+    return TOY_OK;
+}
+
 static int lz_encode_stream(lz_compressor_t *comp, lz_stream_t *strm, uint32_t *anchor)
 {
     uint32_t seq = lz_read_seq(strm->in + strm->in_pos);
 
-    // 向前查找具有相同4字节前缀的字符串位置
-    lz_backward_ref_t *backward = lz_get_backward_ref(comp->backward_refs, seq);
-    if (backward == NULL) {
+    /* 向后查找具有相同4字节前缀的所有字符串位置 */
+    uint32_t *refs;
+    uint32_t refs_num = lz_get_backward_refs(comp->backward_refs, seq, &refs);
+    if (refs_num == 0) {
         lz_insert_backward_ref(comp->backward_refs, seq, strm->in_pos);
         strm->in_pos++;
         return TOY_ERR_LZ_BACKWARD_NOT_EXIST;
     }
 
+    /* 压缩literal */
     lz_encode_literals(strm, *anchor, strm->in_pos);
 
-    uint32_t match_len = lz_encode_match(strm, backward->refpos);
-    
-    // 跳过匹配段
-    strm->in_pos += match_len;
-    *anchor = strm->in_pos;
+    /* 压缩matches */
+    uint32_t longest_ref = lz_get_longest_match(strm, refs, refs_num);
+    uint32_t match_len = lz_encode_match(strm, longest_ref);
 
-    return TOY_OK;
+    // 跳过匹配段
+    *anchor = strm->in_pos + match_len;
+
+    return lz_skip_match(comp, strm, match_len);
 }
 
 /**
@@ -240,6 +286,8 @@ static int lz_encode_stream(lz_compressor_t *comp, lz_stream_t *strm, uint32_t *
 static int lz_start_compress(lz_compressor_t *comp, lz_stream_t *strm)
 {
     uint32_t anchor = 0;
+
+    /* 压缩literal + match的数据 */
     while (strm->in_pos < strm->in_size - SEQ_SIZE) {
         int ret = lz_encode_stream(comp, strm, &anchor);
         if (ret == TOY_ERR_LZ_BACKWARD_NOT_EXIST) {
@@ -249,7 +297,8 @@ static int lz_start_compress(lz_compressor_t *comp, lz_stream_t *strm)
             return ret;
         }
     }
-    
+
+    /* 压缩最后一段未处理的literal */
     if (anchor < strm->out_size) {
         lz_encode_literals(strm, anchor, strm->out_size);
     }

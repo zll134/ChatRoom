@@ -90,7 +90,7 @@ TEST(dict_test, batch_add_and_delete_expect_ok)
     }
     ASSERT_EQ(dict_get_entry_num(g_dict), 0);
 
-    printf("aver search len: %d \n", dict_get_average_search_len(g_dict));
+    TEST_INFO("aver search len: %d", dict_get_average_search_len(g_dict));
 }
 
 TEST_SUITE_RUNNER(dict_test)

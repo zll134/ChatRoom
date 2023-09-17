@@ -11,8 +11,15 @@
 #include <string.h>
 
 #include "pub_def.h"
+#include "log.h"
 #include "hash.h"
 #include "dict.h"
+#include "ringbuff.h"
+
+typedef struct {
+    uint32_t seq;    // 四字节序列
+    ringbuff_t *refs; // 所有引用位置
+} lz_backward_ref_t;
 
 #define MAX_REF_POS_NUM 16
 
@@ -29,21 +36,22 @@ static bool lz_backward_key_match(const void *key1, const void *key2)
     return node1->seq == node2->seq;
 }
 
-static void lz_backward_entry_uninit(void *entry)
+static void lz_backward_entry_uninit(void *record)
 {
-    lz_backward_ref_t *node = (lz_backward_ref_t *)entry;
+    lz_backward_ref_t *node = (lz_backward_ref_t *)record;
     ringbuff_destroy(node->refs);
+    node->refs = NULL;
 }
 
-static void lz_backward_entry_init(void *entry)
+static int lz_backward_entry_init(void *record)
 {
-    lz_backward_ref_t *node = (lz_backward_ref_t *)entry;
+    lz_backward_ref_t *node = (lz_backward_ref_t *)record;
 
     ringbuff_option_t option = {0};
     option.buff_size = sizeof(uint32_t) * MAX_REF_POS_NUM;
 
     node->refs = ringbuff_create(&option);
-    if (node->ref == NULL) {
+    if (node->refs == NULL) {
         return TOY_ERR_LZ_RINGBUF_CREATE_FAIL;
     }
 
@@ -69,23 +77,46 @@ dict_t *lz_create_backward_ref_dict()
     return dict;
 }
 
-lz_backward_ref_t *lz_get_backward_ref(dict_t *dict, uint32_t seq)
+uint32_t lz_get_backward_refs(dict_t *dict, uint32_t seq, uint32_t **refposes)
 {
+    if (dict == NULL || refposes == NULL) {
+        return 0;
+    }
+
     lz_backward_ref_t key = {
         .seq = seq, 
     };
 
     dict_entry_t *entry = dict_find(dict, &key);
     if (entry == NULL) {
-        return NULL;
+        return 0;
     }
 
-    return entry->record;
+    ringbuff_t *refs_buf = ((lz_backward_ref_t *)entry->record)->refs;
+    uint32_t refs_num = ringbuff_len(refs_buf) / sizeof(uint32_t);
+    if (refs_num == 0) {
+        return 0;
+    }
+
+    uint32_t refs_size = refs_num * sizeof(uint32_t);
+    uint32_t *refs = malloc(refs_size);
+    if (refs == NULL) {
+        return 0;
+    }
+
+    int ret = ringbuff_read(refs_buf, (uint8_t *)refs, refs_size);
+    if (ret == -1) {
+        free(refposes);
+        return 0;
+    }
+
+    *refposes = refs;
+    return refs_num;
 }
 
 static int lz_add_backward_refpos(lz_backward_ref_t *backward_ref, uint32_t refpos)
 {
-    return ringbuff_write(backward_ref->refs, &refpos, sizeof(refpos));
+    return ringbuff_write(backward_ref->refs, (uint8_t *)&refpos, sizeof(refpos));
 }
 
 int lz_insert_backward_ref(dict_t *dict, uint32_t seq, uint32_t refpos)

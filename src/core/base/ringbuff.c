@@ -22,7 +22,7 @@ ringbuff_t *ringbuff_create(ringbuff_option_t *option)
     }
 
     ringbuff->buff_size = option->buff_size;
-    ringbuff->buff = calloc(1, sizeof(*ringbuff));
+    ringbuff->buff = calloc(1, ringbuff->buff_size);
     if (ringbuff->buff == NULL) {
         diag_err("[ringbuff] Create ringbuff buffer failed.");
         return NULL;
@@ -50,7 +50,7 @@ int ringbuff_write(ringbuff_t *ringbuff, uint8_t *bytes, uint32_t nbyte)
     uint32_t buff_size = ringbuff->buff_size;
     uint32_t real_pos = ringbuff->logic_pos % buff_size;
 
-    if (real_pos + nbyte <= ringbuff->buff_size) {
+    if (real_pos + nbyte < ringbuff->buff_size) {
         memcpy(&buff[real_pos], bytes, nbyte);
     } else {
         /* 临界位置分成两个位置写入 */
@@ -66,16 +66,17 @@ int ringbuff_write(ringbuff_t *ringbuff, uint8_t *bytes, uint32_t nbyte)
 
 int ringbuff_read(ringbuff_t *ringbuff, uint8_t *bytes, uint32_t nbyte)
 {
-    if ((nbyte > ringbuff->logic_pos) ||
-        (nbyte > ringbuff->buff_size)) {
+    if ((ringbuff == NULL) || (bytes == NULL)) {
         diag_err("[ringbuff] Ringbuff read para invalid.");
-        return TOY_ERR_RINGBUFF_READ_INVALID_PARA;
+        return -1;
     }
 
     uint8_t *buff = ringbuff->buff;
     uint32_t buff_size = ringbuff->buff_size;
 
-    uint32_t start_pos = (ringbuff->logic_pos - nbyte) % buff_size;
+    uint32_t read_bytes = nbyte < ringbuff_len(ringbuff) ? nbyte : ringbuff_len(ringbuff);
+
+    uint32_t start_pos = (ringbuff->logic_pos - read_bytes) % buff_size;
     uint32_t end_pos = ringbuff->logic_pos % buff_size;
 
     if (start_pos >= end_pos) {
@@ -85,5 +86,14 @@ int ringbuff_read(ringbuff_t *ringbuff, uint8_t *bytes, uint32_t nbyte)
         memcpy(&bytes[0], &buff[start_pos], end_pos - start_pos);
     }
 
-    return TOY_OK;
+    return read_bytes;
+}
+
+uint32_t ringbuff_len(ringbuff_t *ringbuff)
+{
+    if (ringbuff->logic_pos < ringbuff->buff_size) {
+        return (uint32_t)ringbuff->logic_pos;
+    }
+
+    return ringbuff->buff_size;
 }

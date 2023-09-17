@@ -71,6 +71,7 @@ static void dict_entry_free(dict_t *dict, dict_entry_t *entry)
             dict->config.record_uninit(entry->record);
         }
         free(entry->record);
+        entry->record = NULL;
         free(entry);
     }
 }
@@ -99,8 +100,8 @@ void dict_destroy(dict_t *dict)
         if (dict->ht[ht_idx].table == NULL) {
             continue;
         }
+
         dict_ht_destroy(dict, &dict->ht[ht_idx]);
-        
     }
     free(dict);
 }

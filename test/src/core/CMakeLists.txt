@@ -16,16 +16,8 @@ target_link_libraries(rbtree_test PRIVATE pthread toy_core)
 add_executable(list_test list_test.c)
 target_link_libraries(list_test PRIVATE pthread toy_core)
 
-# dict_test 测试模块
-add_executable(dict_test dict_test.c)
-target_link_libraries(dict_test PRIVATE pthread toy_core)
-
-# compress_test 测试模块
-add_executable(compress_test compress_test.c)
-target_link_libraries(compress_test PRIVATE pthread toy_core)
+add_subdirectory(base)
 
 install(TARGETS list_test
                 rbtree_test
-                dict_test
-                compress_test
         DESTINATION test_bin)

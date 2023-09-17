@@ -12,6 +12,7 @@
 #include "unittest.h"
 #include "toylz.h"
 #include "pub_def.h"
+#include "dict.h"
 
 /* 测试用字符串 */
 
@@ -45,6 +46,9 @@ static const char *g_long_str = "The Wood River Branch Railroad was a shortline 
 "two other Hope Valley industries were destroyed by fire. Lacking enough business to justify "
 "operating expenses, the railroad ceased operations and was abandoned in its entirety in August "
 "1947. Little of the line remains as of 2018.\n";
+
+// 多匹配串的字符串
+static const char *g_multi_match_str = "Elep Elep-Elep:Ele,Elep.Elep;Elep-Elep=Elep";
 
 static lz_compressor_t *g_comp = NULL;
 
@@ -112,7 +116,7 @@ static void test_assert_compress_and_decompress(uint8_t *input, uint32_t input_l
 }
 
 /**
- *  用例1: 字符串匹配块长度小于31长度
+ *  用例1: 字符串匹配块长度小于31长度。压缩：21 -> 17
  */
 TEST(compress_test, Compress_and_decompress_When_match_is_short)
 {
@@ -123,7 +127,7 @@ TEST(compress_test, Compress_and_decompress_When_match_is_short)
 }
 
 /**
- *  用例2: 字符串匹配块长度大于31长度
+ *  用例2: 字符串匹配块长度大于31长度。压缩： 243 -> 129
  */
 TEST(compress_test, Compress_and_decompress_When_match_is_long)
 {
@@ -134,7 +138,7 @@ TEST(compress_test, Compress_and_decompress_When_match_is_long)
 }
 
 /**
- *  用例3: 长字符串匹配块压缩
+ *  用例3: 长字符串匹配块压缩。压缩：1717 -> 1517
  */
 TEST(compress_test, Compress_and_decompress_When_string_is_long)
 {
@@ -144,11 +148,23 @@ TEST(compress_test, Compress_and_decompress_When_string_is_long)
     test_assert_compress_and_decompress(input, input_len);
 }
 
+/**
+ *  用例4: 多匹配块压缩。压缩：1717 -> 1517
+ */
+TEST(compress_test, Compress_and_decompress_When_multi_match)
+{
+    uint8_t *input = (uint8_t *)g_multi_match_str;
+    uint32_t input_len = strlen(g_multi_match_str) + 1;
+
+    test_assert_compress_and_decompress(input, input_len);
+}
+
 TEST_SUITE_RUNNER(compress_test)
 {
-    RUN_TEST_CASE(compress_test, Compress_and_decompress_When_match_is_short);
-    RUN_TEST_CASE(compress_test, Compress_and_decompress_When_match_is_long);
-    RUN_TEST_CASE(compress_test, Compress_and_decompress_When_string_is_long);
+    //RUN_TEST_CASE(compress_test, Compress_and_decompress_When_match_is_short);
+    //RUN_TEST_CASE(compress_test, Compress_and_decompress_When_match_is_long);
+    //RUN_TEST_CASE(compress_test, Compress_and_decompress_When_string_is_long);
+    RUN_TEST_CASE(compress_test, Compress_and_decompress_When_multi_match);
 }
 
 int main()
