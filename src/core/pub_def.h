@@ -37,6 +37,7 @@
 #define TOY_ERR_LZ_OUT_MEM_UNSUFFICIENT         204
 #define TOY_ERR_LZ_BACKWARD_NOT_EXIST           205
 #define TOY_ERR_LZ_RINGBUF_CREATE_FAIL          206
+#define TOY_ERR_LZ_CREATE_DICT_FAIL             207
 
 /* 201~300 为ringbuff的错误码 */
 #define TOY_ERR_RINGBUFF_WRITE_INVALID_PARA     301

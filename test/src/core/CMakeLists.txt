@@ -17,6 +17,7 @@ add_executable(list_test list_test.c)
 target_link_libraries(list_test PRIVATE pthread toy_core)
 
 add_subdirectory(base)
+add_subdirectory(compress)
 
 install(TARGETS list_test
                 rbtree_test
