@@ -12,12 +12,6 @@
 #include <stdarg.h>
 #include <string.h>
 
-enum {
-    FONT_RED = 31,
-    FONT_GREEN = 32,
-    FONT_WHITE = 37,
-};
-
 typedef struct {
     bool case_passed;
     uint32_t passed_num;
@@ -28,7 +22,7 @@ typedef struct {
 
 unit_test_ctx_t g_running_ctx = {0};
 
-static void unit_print(uint32_t font_color, const char *fmt, ...)
+void unit_print(uint32_t font_color, const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
@@ -65,7 +59,7 @@ void unit_test_suite_runner(unit_test_suite_t *suite)
 
 static void unit_test_case_setup(unit_test_case_t *test_case)
 {
-    unit_print(FONT_GREEN, "[ RUN      ]");
+    unit_print(FONT_GREEN, "[-RUN -----]");
     unit_print(FONT_WHITE, " %s.%s\n", test_case->group, test_case->name);
 
     g_running_ctx.case_passed = true;
@@ -80,11 +74,11 @@ static void unit_test_case_tear_down(unit_test_case_t *test_case)
 {
     if (g_running_ctx.case_passed) {
         g_running_ctx.passed_num++;
-        unit_print(FONT_GREEN, "[       OK ]");
+        unit_print(FONT_GREEN, "[-------OK-]");
         unit_print(FONT_WHITE, " %s.%s\n", test_case->group, test_case->name);
     } else {
         g_running_ctx.failed_num++;
-        unit_print(FONT_RED, "[  FAILED  ]");
+        unit_print(FONT_RED, "[--FAILED--]");
         unit_print(FONT_WHITE, " %s.%s\n", test_case->group, test_case->name);
     }
 
@@ -105,20 +99,38 @@ void unit_test_case_runner(unit_test_case_t *test_case)
     unit_test_case_tear_down(test_case);
 }
 
-void unit_test_boolean(bool condition, bool expected, uint32_t assert_type, 
+static void unit_test_failed_proc(uint32_t assert_type)
+{
+    g_running_ctx.case_passed = false;
+    if (assert_type == ASSERTION_TYPE_ASSERT) {
+        unit_test_case_tear_down(&g_running_ctx.test_case);
+        g_running_ctx.test_suite.tear_down();
+        exit(0);
+    }
+}
+
+void unit_test_assert_boolean(bool condition, bool expected, uint32_t assert_type, 
     const char *file, uint32_t line)
 {
     if (condition == expected) {
         return;
     }
 
-    g_running_ctx.case_passed = false;
     unit_print(FONT_WHITE, "%s(line %u): assertion failed:\nactual %u\nexpeced %u\n",
         file, line, condition, expected);
 
-    if (assert_type == ASSERTION_TYPE_ASSERT) {
-        unit_test_case_tear_down(&g_running_ctx.test_case);
-        g_running_ctx.test_suite.tear_down();
-        exit(0);
+    unit_test_failed_proc(assert_type);
+}
+
+void unit_test_assert_integer(uint32_t actual, uint32_t expected, uint32_t assert_type, 
+    const char *file, uint32_t line)
+{
+    if (actual == expected) {
+        return;
     }
+
+    unit_print(FONT_WHITE, "%s(line %u): assertion failed:\nactual %u\nexpeced %u\n",
+        file, line, actual, expected);
+
+    unit_test_failed_proc(assert_type);
 }

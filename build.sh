@@ -5,24 +5,27 @@ source $project_path/build/build_src.sh
 source $project_path/build/build_test.sh
 source $project_path/build/run_test.sh
 
-increment=""
+increment="false"
 clean_flag=""
 build_test=""
 run_test=""
+test_module=""
 
 function usage()
 {
-    echo "Script build.sh's usage:"
-    echo "  ./build.sh [option]"
+    echo "Script usage:"
+    echo "  Build all:           ./build.sh"
+    echo "  Build increment:     ./build.sh -i"
+    echo "  Build and run test: . /build.sh -i -t -r [ -m module ]"
     echo "Options:"
     echo " -i      Incremental build."
     echo " -c      Clean build result."
     echo " -t      Build test file"
-    echo " -r      Run all test"
+    echo " -r      Run test case"
     echo " -h      Print help."
 }
 
-while getopts 'icthr' opt;
+while getopts 'icthrm:' opt;
 do
     case $opt in
         i)
@@ -33,6 +36,8 @@ do
             build_test="true";; # 表示编译测试的二进制模块
         r)
             run_test="true";; # 表示编译测试的二进制模块
+        m)
+            test_module="$OPTARG";;
         h)
             usage
             exit 0;;
@@ -46,7 +51,8 @@ if [ "$clean_flag"x == "true"x ]; then
     exit 0
 fi
 
-if [ "$increment"x == "true"x ];then
+# 非增量编译需要删除output目录
+if [ "$increment"x == "false"x ];then
     [ -d $project_path/output ] && rm -rf $project_path/output
 fi
 
@@ -59,6 +65,6 @@ fi
 
 # 运行测试用例
 if [ "$run_test"x == "true"x ];then
-    run_test $project_path
+    run_test $project_path $test_module
 fi
 
