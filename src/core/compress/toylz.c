@@ -47,17 +47,31 @@
  *          +------------+-------+============+
  *
  *    2.2 Match
- *      A1~A3表示L1~Ln占用的长度，B1~B3表示D1~Dn的占用的长度，L1~Ln表示长度，
- *      D1~Dn表示距离。block格式如下：
- *      +---------------+-+ ... +-+-+ ... +-+
- *      | 11A3~A1B3~B1 |  Ln~L1  |  Dn~D1  |
- *      +---------------+-+ ... +-+-+ ... +-+
+ *      格式1:
+ *          +---------------+-+ ... +-+-+ ... +-+
+ *          | 10A4~A1B2~B1  |  Ln~L1  |  Dn~D1  |
+ *          +---------------+-+ ... +-+-+ ... +-+
+ *         A1~A4表示L1~Ln占用的长度，B1~B2表示D1~Dn的占用的长度，L1~Ln表示长度，
+ *         D1~Dn表示距离。
+ *      格式2:
+ *          +---------------+-+ ... +-+
+ *          | 11L4~L1B2~B1  |  Dn~D1  |
+ *          +---------------+-+ ... +-+
+ *         L1~L4表示匹配串的长度，B1~B2表示D1~Dn的占用的长度，D1~Dn表示距离。
  */
 
 
 #define MIN_INPUT_LEN 4
 #define SEQ_SIZE 4
 #define INVALID_POS 0xffff
+#define MATCH_LEN_BITS 4
+#define DISTANCE_BITS 2
+#define SMALL_MATCH_LEN_MAX  ((uint32_t)1 << MATCH_LEN_BITS - 1) + SEQ_SIZE
+
+enum {
+    MATCH_TOKEN_LEN_BYTE_ENCODE,
+    MATCH_TOKEN_LEN_ENCODE
+};
 
 /**
  *  不同level下的滑窗大小：
@@ -93,12 +107,6 @@ lz_compressor_t *lz_create_compressor(lz_option_t *option)
     lz_compressor_t *comp = calloc(1, sizeof(*comp));
     if (!comp) {
         diag_err("[compress] Calloc for compressor failed.");
-        return NULL;
-    }
-
-    comp->backward_refs = lz_create_backward_ref_dict();
-    if (comp->backward_refs == NULL) {
-        diag_err("[compress] Create backward dict failed.");
         return NULL;
     }
 
@@ -174,60 +182,65 @@ static uint32_t lz_get_match_len(const uint8_t *in, uint32_t in_len,
 static uint32_t lz_encode_match(lz_stream_t *strm, uint32_t ref_pos)
 {
     uint32_t match_len = lz_get_match_len(strm->in, strm->in_size, ref_pos, strm->in_pos);
-    uint32_t tmp_match_len = match_len;
     uint32_t distance = strm->in_pos - ref_pos;
-
     uint8_t *out = strm->out;
+
+    uint8_t len_bytes = bit_get_bytes(match_len);
+    uint8_t dist_bytes = bit_get_bytes(distance);
+    uint8_t skip_len = 0;
     out[strm->out_pos] = 0;
-    out[strm->out_pos] |= 0xc0;
-    
-    uint8_t match_len_bytes = bit_get_bytes(match_len);
-    uint8_t distance_bytes = bit_get_bytes(distance);
-
-    out[strm->out_pos] |= (match_len_bytes << 3);
-    out[strm->out_pos] |= distance_bytes;
-    uint8_t move_len = match_len_bytes + distance_bytes;
-    uint8_t tmp_match_len_bytes = match_len_bytes;
-
-    // 长度
-    while (match_len_bytes > 0) {
-        out[strm->out_pos + match_len_bytes] = match_len & 0xff;
-        match_len_bytes--;
-        match_len = match_len >> 8;
+    if (match_len > SMALL_MATCH_LEN_MAX) {
+        out[strm->out_pos] |= 0x80; // 1000 0000
+        out[strm->out_pos] |= (len_bytes << DISTANCE_BITS);
+        out[strm->out_pos] |= dist_bytes;
+        skip_len = dist_bytes + len_bytes;
+    } else {
+        out[strm->out_pos] |= 0xc0; // 1100 0000
+        out[strm->out_pos] |= ((match_len - SEQ_SIZE) << DISTANCE_BITS);
+        out[strm->out_pos] |= dist_bytes;
+        skip_len = dist_bytes;
+        len_bytes = 0;
     }
 
-    // 距离
-    while (distance_bytes > 0) {
-        out[strm->out_pos + tmp_match_len_bytes + distance_bytes] = distance & 0xff;
-        distance_bytes--;
+    // 长度编码
+    uint8_t tmp_len_bytes = len_bytes;
+    uint32_t tmp_match_len = match_len;
+    while ((match_len > SMALL_MATCH_LEN_MAX) &&
+           (tmp_len_bytes > 0)) {
+        out[strm->out_pos + tmp_len_bytes] = tmp_match_len & 0xff;
+        tmp_len_bytes--;
+        tmp_match_len = tmp_match_len >> 8;
+    }
+
+    // 距离编码
+    uint8_t tmp_dist_bytes = dist_bytes;
+    while (tmp_dist_bytes > 0) {
+        out[strm->out_pos + len_bytes + tmp_dist_bytes] = distance & 0xff;
+        tmp_dist_bytes--;
         distance = distance >> 8;
     }
-    strm->out_pos += move_len + 1;
 
-    return tmp_match_len;
+    strm->out_pos += (skip_len + 1);
+
+    return match_len;
 }
 
 static int lz_get_longest_match(lz_stream_t *strm, uint32_t *refs, uint32_t refs_num)
 {
     uint32_t max_len = 0;
-    //diag_err("longmatch start: inpos %u", strm->in_pos);
+
     uint32_t target_ref_pos = refs[0];
     for (int i = 0; i < refs_num; i++) {
-        //diag_err("longmatch: refs[%d] %u", i, refs[i]);
         uint32_t match_len = lz_get_match_len(strm->in, strm->in_size, refs[i], strm->in_pos);
-        if (match_len > max_len) {
+        if (match_len >= max_len) {
             max_len = match_len;
             target_ref_pos = refs[i];
         }
     }
-    //diag_err("longmatch: %u", target_ref_pos);
+
     return target_ref_pos;
 }
 
-void zhanglele()
-{
-
-}
 static int lz_skip_match(lz_compressor_t *comp, lz_stream_t *strm, uint32_t match_len)
 {
     for (int i = 0; i < match_len; i++) {
@@ -235,9 +248,6 @@ static int lz_skip_match(lz_compressor_t *comp, lz_stream_t *strm, uint32_t matc
             continue;
         }
 
-        if (strm->in_pos == 34) {
-            zhanglele();
-        }
         uint32_t seq = lz_read_seq(strm->in + strm->in_pos);
         int ret = lz_insert_backward_ref(comp->backward_refs, seq, strm->in_pos);
         if (ret != TOY_OK) {
@@ -318,6 +328,12 @@ int lz_compress(lz_compressor_t *comp, lz_stream_t *strm)
         return TOY_ERR_LZ_INVALID_PARA;
     }
 
+    comp->backward_refs = lz_create_backward_ref_dict();
+    if (comp->backward_refs == NULL) {
+        diag_err("[compress] Create backward dict failed.");
+        return TOY_ERR_LZ_CREATE_DICT_FAIL;
+    }
+
     // 初始化字节流
     lz_init_strm(strm);
 
@@ -325,10 +341,14 @@ int lz_compress(lz_compressor_t *comp, lz_stream_t *strm)
     int ret = lz_start_compress(comp, strm);
     if (ret != TOY_OK) {
         diag_err("[compress] Compress failed, ret: %d.", ret);
+        lz_destroy_backward_ref_dict(comp->backward_refs);
+        comp->backward_refs = NULL;
         return ret;
     }
 
     strm->out_total = strm->out_pos;
+    lz_destroy_backward_ref_dict(comp->backward_refs);
+    comp->backward_refs = NULL;
     return TOY_OK;
 }
 
@@ -336,7 +356,7 @@ static bool lz_is_literals_token(lz_stream_t *strm)
 {
     uint8_t token = strm->in[strm->in_pos];
 
-    if ((token & 0x80) > 0) {
+    if ((token & 0x80) > 0) { // 1000 0000
         return false;
     }
     return true;
@@ -358,18 +378,29 @@ static int lz_decode_literals(lz_stream_t *strm)
     memcpy(strm->out + strm->out_pos, strm->in + strm->in_pos, literal_len);
     strm->in_pos += literal_len;
     strm->out_pos += literal_len;
+
     return 0;
 }
 
 static int lz_decode_match(lz_stream_t *strm)
 {
     uint8_t token = strm->in[strm->in_pos];
-    uint8_t len_bytes = (token >> 3) & 0x7;
-    uint8_t dist_bytes = token & 0x7;
+    uint8_t dist_bytes = token & 0x3; // 0000 0011
+
+    uint32_t len = 0;
+    uint32_t type;
+    uint8_t len_bytes;
+    if ((token & 0x40) > 0) { // 0100 0000
+        type = MATCH_TOKEN_LEN_ENCODE;
+        len = ((token >> DISTANCE_BITS) & 0xF) + SEQ_SIZE; // 0000 1111
+    } else {
+        type = MATCH_TOKEN_LEN_BYTE_ENCODE;
+        len_bytes = (token >> DISTANCE_BITS) & 0xF; // 0000 1111
+    }
 
     strm->in_pos++;
-    uint32_t len = 0;
-    while (len_bytes > 0) {
+    while ((type == MATCH_TOKEN_LEN_BYTE_ENCODE) &&
+           (len_bytes > 0)) {
         len = (len << 8) + (uint8_t)strm->in[strm->in_pos];
         strm->in_pos++;
         len_bytes--;
@@ -381,6 +412,7 @@ static int lz_decode_match(lz_stream_t *strm)
         strm->in_pos++;
         dist_bytes--;
     }
+
     memcpy(strm->out + strm->out_pos, strm->out + strm->out_pos - dist, len);
     strm->out_pos += len;
     return 0;
