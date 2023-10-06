@@ -8,4 +8,7 @@
 
 #include <stdint.h>
 
+int huffman_encode(uint8_t *in, uint32_t in_len, uint8_t **out, uint32_t *out_len);
+
+int huffman_decode(uint8_t *in, uint32_t in_len, uint8_t **out, uint32_t *out_len);
 #endif
