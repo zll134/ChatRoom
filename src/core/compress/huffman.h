@@ -7,8 +7,11 @@
 #define HUFFMAN_H
 
 #include <stdint.h>
+#include "stream.h"
 
-int huffman_encode(uint8_t *in, uint32_t in_len, uint8_t **out, uint32_t *out_len);
+int huffman_encode(stream_t *in, stream_t *out);
 
-int huffman_decode(uint8_t *in, uint32_t in_len, uint8_t **out, uint32_t *out_len);
+int huffman_decode(stream_t *in, stream_t *out);
+
+int huffman_free_stream(stream_t *strm);
 #endif
