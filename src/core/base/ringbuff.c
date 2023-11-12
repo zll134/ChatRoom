@@ -17,14 +17,14 @@ ringbuff_t *ringbuff_create(ringbuff_option_t *option)
 {
     ringbuff_t *ringbuff = calloc(1, sizeof(*ringbuff));
     if (ringbuff == NULL) {
-        diag_err("[ringbuff] Create ringbuff obj failed.");
+        ERROR("[ringbuff] Create ringbuff obj failed.");
         return NULL;
     }
 
     ringbuff->buff_size = option->buff_size;
     ringbuff->buff = calloc(1, ringbuff->buff_size);
     if (ringbuff->buff == NULL) {
-        diag_err("[ringbuff] Create ringbuff buffer failed.");
+        ERROR("[ringbuff] Create ringbuff buffer failed.");
         return NULL;
     }
 
@@ -42,7 +42,7 @@ void ringbuff_destroy(ringbuff_t *ringbuff)
 int ringbuff_write(ringbuff_t *ringbuff, uint8_t *bytes, uint32_t nbyte)
 {
     if (bytes == NULL || nbyte == 0) {
-        diag_err("[ringbuff] Ringbuff write para invalid.");
+        ERROR("[ringbuff] Ringbuff write para invalid.");
         return TOY_ERR_RINGBUFF_WRITE_INVALID_PARA;
     }
 
@@ -67,7 +67,7 @@ int ringbuff_write(ringbuff_t *ringbuff, uint8_t *bytes, uint32_t nbyte)
 int ringbuff_read(ringbuff_t *ringbuff, uint8_t *bytes, uint32_t nbyte)
 {
     if ((ringbuff == NULL) || (bytes == NULL)) {
-        diag_err("[ringbuff] Ringbuff read para invalid.");
+        ERROR("[ringbuff] Ringbuff read para invalid.");
         return -1;
     }
 

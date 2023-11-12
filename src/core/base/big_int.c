@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "log.h"
 /*
 
 一、长整数结构体
@@ -33,7 +34,7 @@ byte低字节存储低位数据
 */
 
 #define BYTE_BITS 8
-#define BYTE_MAX_VAL 255
+#define BYTE_MAX_VAL 256
 
 long_integer_t *integer_new(uint64_t val, uint32_t byte_len)
 {
@@ -77,28 +78,30 @@ void integer_shift_left(long_integer_t *integer, uint32_t bits)
 {
     uint8_t *vals = integer->bytes;
     uint32_t len = integer->byte_len;
-    for (int i = integer->byte_len; i >= 0; i--) {
+    for (int i = len - 1; i >= 0; i--) {
         uint8_t val = vals[i];
         vals[i] = (vals[i] << bits);
 
-        uint32_t shift_byte_index = (bits / BYTE_BITS) + i;
-        uint8_t shift_bit_index = (bits % BYTE_BITS);
+        uint32_t byte_pos = (bits / BYTE_BITS) + i;
+        uint8_t bit_pos = (bits % BYTE_BITS);
     
         // 超出边界值则处理下一个
-        if (shift_byte_index >= len) {
+        if (byte_pos >= len) {
             continue;
         }
     
         // 位于边界值上
-        if (shift_byte_index == len - 1) {
-            vals[shift_byte_index] = (vals[shift_byte_index] & ((1 << shift_bit_index) - 1))
-                + (val << shift_bit_index);
+        if (byte_pos == len - 1) {
+            vals[byte_pos] = (vals[byte_pos] & ((1 << bit_pos) - 1)) + (val << bit_pos);
+            TRACE("[big_int] Bigint left shift, idx %d, byte[%d] %u",
+                i, byte_pos, vals[byte_pos]);
         } else {
-            vals[shift_byte_index] = (vals[shift_byte_index] & ((1 << shift_bit_index) - 1))
-                + (val << shift_bit_index);
-            vals[shift_byte_index + 1] = (vals[shift_byte_index + 1] << shift_bit_index) |
-                       (val >> (BYTE_BITS - shift_bit_index));
-        }
+            vals[byte_pos] = (vals[byte_pos] & ((1 << bit_pos) - 1)) + (val << bit_pos);
+            vals[byte_pos + 1] = (vals[byte_pos + 1] & ((0xff) << bit_pos)) +
+                       (val >> (BYTE_BITS - bit_pos));
+            TRACE("[big_int] Bigint left shift, idx %d, byte[%d] %u, byte[%d] %u",
+                i, byte_pos, vals[byte_pos], byte_pos + 1, vals[byte_pos + 1]);
+        } 
     }
 }
 
@@ -109,11 +112,13 @@ void integer_add(long_integer_t *integer, uint32_t val)
 
     uint32_t len = integer->byte_len;
     int i = 0;
-    int carry = 0; // 进位
+    int carry = val; // 进位
     while (i < len) {
-        int sum = integer->bytes[i] + carry + val;
+        int sum = integer->bytes[i] + carry;
         carry = sum / BYTE_MAX_VAL;
         integer->bytes[i] = sum % BYTE_MAX_VAL;
+        TRACE("[big_int] Bigint add, idx %d, carry %d, byte %u",
+                i, carry, integer->bytes[i]);
         i++;
     }
 }
@@ -139,12 +144,12 @@ bool integer_equal(long_integer_t *integer1, long_integer_t *integer2)
     long_integer_t *long_int = NULL;
     long_integer_t *short_int = NULL;
 
-    if (integer1->byte_len > integer2->byte_len) {
+    if (integer1->byte_len >= integer2->byte_len) {
         long_int = integer1;
         short_int = integer2;
     } else {
-        long_int = integer1;
-        short_int = integer2;
+        long_int = integer2;
+        short_int = integer1;
     }
 
     for (int i = long_int->byte_len - 1; i > short_int->byte_len; i--) {
@@ -154,6 +159,9 @@ bool integer_equal(long_integer_t *integer1, long_integer_t *integer2)
     }
 
     for (int i = short_int->byte_len - 1; i >= 0; i--) {
+        TRACE("[big_int] Bigint bytes compare, idx %d, lbyte %u, sbyte %u",
+                i, long_int->bytes[i], short_int->bytes[i]);
+
         if (long_int->bytes[i] != short_int->bytes[i]) {
             return false;
         }

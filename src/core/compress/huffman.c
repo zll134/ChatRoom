@@ -391,7 +391,7 @@ static int huffman_write_data(stream_t *in, stream_t *out,
     }
 
     // 写字符数据
-    ret = huffman_write_syms(in, out, codes, coides_len);
+    ret = huffman_write_syms(in, out, codes, codes_len);
     if (ret != TOY_OK) {
         return ret;
     }
@@ -399,20 +399,20 @@ static int huffman_write_data(stream_t *in, stream_t *out,
 }
 int huffman_encode(stream_t *in, stream_t *out)
 {
-    if (out == NULL || out_len == NULL) {
+    if (in == NULL || out == NULL) {
         return TOY_ERR_HUFFMAN_INVALID_PARA;
     }
 
     huffman_node_t *sym_nodes[MAX_SYMBOL_NUM] = {0};
     /* 计算字符频率 */
-    int ret = huffman_calc_symbol_frequencies(sym_nodes, MAX_SYMBOL_NUM, in, in_len);
+    int ret = huffman_calc_symbol_frequencies(sym_nodes, MAX_SYMBOL_NUM, in->data, in->size);
     if (ret != TOY_OK) {
         huffman_free_sym_nodes(sym_nodes, MAX_SYMBOL_NUM);
         return ret;
     }
 
     /* 构建霍夫曼树 */
-    int ret = huffman_build_tree(sym_nodes, MAX_SYMBOL_NUM);
+    ret = huffman_build_tree(sym_nodes, MAX_SYMBOL_NUM);
     if (ret != TOY_OK) {
         huffman_free_sym_nodes(sym_nodes, MAX_SYMBOL_NUM);
         return ret;
@@ -421,7 +421,7 @@ int huffman_encode(stream_t *in, stream_t *out)
     /* 构建编码表 */
     huffman_code_t *codes = NULL;
     uint32_t codes_len;
-    int ret = huffman_build_code_table(sym_nodes[0], &codes, &codes_len);
+    ret = huffman_build_code_table(sym_nodes[0], &codes, &codes_len);
     if (ret != TOY_OK) {
         huffman_free_sym_nodes(sym_nodes, MAX_SYMBOL_NUM);
         return ret;

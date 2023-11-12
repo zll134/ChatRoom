@@ -100,13 +100,13 @@ lz_compressor_t *lz_create_compressor(lz_option_t *option)
 {
     if (option->level > LZ_MAX_COMPRESS_LEVEL ||
         option->level < LZ_MIN_COMPRESS_LEVEL) {
-        diag_err("[compress] Compress level is invalid.");
+        ERROR("[compress] Compress level is invalid.");
         return NULL;
     }
 
     lz_compressor_t *comp = calloc(1, sizeof(*comp));
     if (!comp) {
-        diag_err("[compress] Calloc for compressor failed.");
+        ERROR("[compress] Calloc for compressor failed.");
         return NULL;
     }
 
@@ -251,7 +251,7 @@ static int lz_skip_match(lz_compressor_t *comp, lz_stream_t *strm, uint32_t matc
         uint32_t seq = lz_read_seq(strm->in + strm->in_pos);
         int ret = lz_insert_backward_ref(comp->backward_refs, seq, strm->in_pos);
         if (ret != TOY_OK) {
-            diag_err("[compress] Insert ref failed, in_pos %u.", strm->in_pos);
+            ERROR("[compress] Insert ref failed, in_pos %u.", strm->in_pos);
             return ret;
         }
         
@@ -330,7 +330,7 @@ int lz_compress(lz_compressor_t *comp, lz_stream_t *strm)
 
     comp->backward_refs = lz_create_backward_ref_dict();
     if (comp->backward_refs == NULL) {
-        diag_err("[compress] Create backward dict failed.");
+        ERROR("[compress] Create backward dict failed.");
         return TOY_ERR_LZ_CREATE_DICT_FAIL;
     }
 
@@ -340,7 +340,7 @@ int lz_compress(lz_compressor_t *comp, lz_stream_t *strm)
     // 开始压缩
     int ret = lz_start_compress(comp, strm);
     if (ret != TOY_OK) {
-        diag_err("[compress] Compress failed, ret: %d.", ret);
+        ERROR("[compress] Compress failed, ret: %d.", ret);
         lz_destroy_backward_ref_dict(comp->backward_refs);
         comp->backward_refs = NULL;
         return ret;

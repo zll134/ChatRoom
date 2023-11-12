@@ -16,7 +16,7 @@ int net_create_listener(int port)
 {
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd == -1) {
-        diag_err("[net]generate socket file failed");
+        ERROR("[net]generate socket file failed");
         return -1;
     }
 
@@ -25,11 +25,11 @@ int net_create_listener(int port)
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
     addr.sin_port = htons(port);
     if (bind(fd, (struct sockaddr *)&addr, sizeof(addr))) {
-        diag_err("[net]bind socket failed");
+        ERROR("[net]bind socket failed");
         return -1;
     }
     if (listen(fd, 5) == -1) {
-        diag_err("[net]listen fd failed");
+        ERROR("[net]listen fd failed");
         return -1;
     }
     return fd;
@@ -39,7 +39,7 @@ int net_connect(const char *ip, uint32_t port)
 {
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd == -1) {
-        diag_err("[net]generate socket file failed");
+        ERROR("[net]generate socket file failed");
         return -1;
     }
 
@@ -49,7 +49,7 @@ int net_connect(const char *ip, uint32_t port)
     addr.sin_port = htons(port);
     int ret = connect(fd, (struct sockaddr*)&addr, sizeof(addr));
     if (ret == -1) {
-        diag_err("[net]connect error");
+        ERROR("[net]connect error");
         return -1;
     }
     return fd;
@@ -59,16 +59,16 @@ int net_connect_by_host(const char *host, uint32_t port)
 {
     struct hostent *hostent = gethostbyname(host);
     if (hostent == NULL) {
-        diag_err("[net]Gethostbyname failed, host %s, error %d.", host, h_errno);
+        ERROR("[net]Gethostbyname failed, host %s, error %d.", host, h_errno);
         return -1;
     }
 
     for(int i= 0; hostent->h_addr_list[i]; i++) {
         const char *ip = inet_ntoa(*(struct in_addr*)hostent->h_addr_list[i]);
-        diag_info("[net]IP addr %d: %s", i + 1, ip);
+        INFO("[net]IP addr %d: %s", i + 1, ip);
         int fd = net_connect(ip, port);
         if (fd < 0) {
-            diag_err("[net]Connect to server unsuccessfully, ip %s, port %u.", ip, port);
+            ERROR("[net]Connect to server unsuccessfully, ip %s, port %u.", ip, port);
             continue;
         }
         return fd;
@@ -80,12 +80,12 @@ int net_set_nonblock(int fd)
 {
     int flags = fcntl(fd, F_GETFL);
     if (flags == -1) {
-        diag_err("[net]get file flags failed");
+        ERROR("[net]get file flags failed");
         return -1;
     }
     flags = flags | O_NONBLOCK;
     if (fcntl(fd, F_SETFL, flags) == -1) {
-        diag_err("[net]fcntl set nonblock failed");
+        ERROR("[net]fcntl set nonblock failed");
         return -1;
     }
     return 0;
@@ -94,19 +94,19 @@ int net_set_nonblock(int fd)
 int net_get_peer_addr(int fd, char *ip, int len, uint16_t *port)
 {
     if ((ip == NULL) || (port == NULL)) {
-        diag_err("[net]input para is invalid");
+        ERROR("[net]input para is invalid");
         return -1;
     }
 
     struct sockaddr_in peer_addr = {0};
     socklen_t peer_addr_len = sizeof(peer_addr);
     if (getpeername(fd, (struct sockaddr*)&peer_addr, &peer_addr_len) == -1) {
-        diag_err("[net]get peer name failed");
+        ERROR("[net]get peer name failed");
         return -1;
     }
 
     if (peer_addr.sin_family != AF_INET) {
-        diag_err("[net]server only support ipv4.");
+        ERROR("[net]server only support ipv4.");
         return -1;
     }
     *port = peer_addr.sin_port;
@@ -117,19 +117,19 @@ int net_get_peer_addr(int fd, char *ip, int len, uint16_t *port)
 int net_get_address(int fd, char *ip, int len, uint16_t *port)
 {
     if ((ip == NULL) || (port == NULL)) {
-        diag_err("[net]input para is invalid");
+        ERROR("[net]input para is invalid");
         return -1;
     }
 
     struct sockaddr_in addr = {0};
     socklen_t addr_len = sizeof(addr);
     if (getsockname(fd, (struct sockaddr*)&addr, &addr_len) == -1) {
-        diag_err("[net]get peer name failed");
+        ERROR("[net]get peer name failed");
         return -1;
     }
 
     if (addr.sin_family != AF_INET) {
-        diag_err("[net]server only support ipv4.");
+        ERROR("[net]server only support ipv4.");
         return -1;
     }
     *port = addr.sin_port;

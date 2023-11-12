@@ -52,7 +52,7 @@ int http_request_init(http_request_t *req)
 {
     req->msg = sds_new_with_len(NULL, HTTP_REQUEST_MSG_INIT_LEN);
     if (req->msg == NULL) {
-        diag_err("[http request] New sds failed.");
+        ERROR("[http request] New sds failed.");
         return TOY_ERR;
     }
     return TOY_OK;
@@ -131,7 +131,7 @@ int http_request_build_msg(uint32_t method, http_request_t *req,
     url_data_t *url_data)
 {
     if (!http_is_method_valid(method)) {
-        diag_err("[http request] Http method is invalid.");
+        ERROR("[http request] Http method is invalid.");
         return TOY_ERR;
     }
 

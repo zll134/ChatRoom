@@ -40,13 +40,13 @@ dict_t *dict_create(dict_config_t *config)
 {
     int ret = dict_check_config(config);
     if (ret != TOY_OK) {
-        diag_err("[dict] Dict config check failed, ret: %d.", ret);
+        ERROR("[dict] Dict config check failed, ret: %d.", ret);
         return NULL;
     }
 
     dict_t *dict = calloc(1, sizeof(dict_t));
     if (!dict) {
-        diag_err("[dict] Create dict failed");
+        ERROR("[dict] Create dict failed");
         return NULL;
     }
 
@@ -56,7 +56,7 @@ dict_t *dict_create(dict_config_t *config)
 
     ret = dict_resize(dict, HT_INIT_SIZE);
     if (ret != TOY_OK) {
-        diag_err("[dict] Resize dict failed, ret: %d.", ret);
+        ERROR("[dict] Resize dict failed, ret: %d.", ret);
         return NULL;
     }
 
@@ -267,7 +267,7 @@ static dict_entry_t *dict_entry_create(dict_t *dict,
     if (dict->config.record_init != NULL) {
         int ret = dict->config.record_init(entry->record);
         if (ret != TOY_OK) {
-            diag_err("[dict] Record init failed, ret %d.", ret);
+            ERROR("[dict] Record init failed, ret %d.", ret);
             return NULL;
         }
     }

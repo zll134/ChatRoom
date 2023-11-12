@@ -13,6 +13,6 @@ typedef struct {
     uint8_t *data;      // 数据流
     uint32_t size;      // 数据流长度
     uint32_t pos;       // 数据流偏移
-} stream_t
+} stream_t;
 
 #endif

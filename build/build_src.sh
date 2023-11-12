@@ -3,12 +3,20 @@
 function build()
 {
     project_path=$1
+    debug_enable=$2
 
     build_dir=$project_path/output
     [ ! -d $build_dir ] && mkdir $build_dir
 
     cd $build_dir
-    cmake -DCMAKE_INSTALL_PREFIX=$build_dir .. 
+
+    # 调试模式会开启调试日志
+    if [ $debug_enable == "true" ]; then
+        cmake -DCMAKE_INSTALL_PREFIX=$build_dir .. -DDEBUG_MODE=1
+    else
+        cmake -DCMAKE_INSTALL_PREFIX=$build_dir ..
+    fi
+
     make -j 8
     make install
 }

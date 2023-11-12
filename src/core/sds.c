@@ -85,7 +85,7 @@ int sds_find_str(sds_t obj, uint32_t start, uint32_t end, const char *str)
     uint32_t len = sds_get_len(obj);
     int str_len = strlen(str);
     if ((start >= end) || (end > len) || (str_len > (end - start))) {
-        diag_err("[SDS]Input param is invalid, objcontent %s, start %u, end %u,"
+        ERROR("[SDS]Input param is invalid, objcontent %s, start %u, end %u,"
                  " obj len %u, str %s, str_len %d.",
                  (char *)obj, start, end, len, str, str_len);
         return -1;
@@ -104,7 +104,7 @@ int sds_find_str(sds_t obj, uint32_t start, uint32_t end, const char *str)
 sds_t sds_substr(sds_t src, int start, int end)
 {
     if ((src == NULL) || (start >= end) || (end > sds_get_len(src))) {
-        diag_err("[SDS]Input param is invalid when getting substr, src %s, start %u, end %u,",
+        ERROR("[SDS]Input param is invalid when getting substr, src %s, start %u, end %u,",
                  (char *)src, start, end);
         return NULL;
     }
@@ -112,7 +112,7 @@ sds_t sds_substr(sds_t src, int start, int end)
     
     sds_t substr = sds_new_with_len(NULL, end - start);
     if (substr == NULL) {
-        diag_err("Create substr failed, src %s, start %d, end %d.",
+        ERROR("Create substr failed, src %s, start %d, end %d.",
             (char *)src, start, end);
         return NULL;
     }
@@ -142,7 +142,7 @@ static sds_t sds_make_space(sds_t s, uint32_t needed_space)
     uint32_t new_len = sds_calc_new_space_size(needed_space);
     sds_hdr_t *new_hdr = (sds_hdr_t *)calloc(1, sizeof(*new_hdr) + new_len + 1);
     if (new_hdr == NULL) {
-        diag_err("[sds] Malloc failed");
+        ERROR("[sds] Malloc failed");
         sds_free(s);
         return NULL;
     }
@@ -161,7 +161,7 @@ static sds_t sds_cat_with_len(sds_t s, const char *t, uint32_t len)
     if (s == NULL) {
         s = sds_new_with_len(t, len);
         if (s == NULL) {
-            diag_err("[sds] Create new sds failed.");
+            ERROR("[sds] Create new sds failed.");
             return NULL;
         }
     }
@@ -169,7 +169,7 @@ static sds_t sds_cat_with_len(sds_t s, const char *t, uint32_t len)
     sds_hdr_t *hdr = sds_get_hdr(s);
     s = sds_make_space(s, hdr->len + len);
     if (s == NULL) {
-        diag_err("[sds] Malloc failed");
+        ERROR("[sds] Malloc failed");
         return NULL;
     }
 
@@ -201,7 +201,7 @@ sds_t sds_vcat(sds_t obj, const char *format, ...)
         char *next = va_arg(ap, char *);
         s = sds_cat(s, next);
         if (s == NULL) {
-            diag_err("Cat next str failed");
+            ERROR("Cat next str failed");
             va_end(ap);  
             return NULL;
         }

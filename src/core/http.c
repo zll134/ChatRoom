@@ -44,7 +44,7 @@ http_client_t *http_client_new(const char *url)
     client->srv_fd = -1;
     int ret = url_parse(url, &client->conn_params);
     if (ret != 0) {
-        diag_err("Parse url failed, url %s.", url);
+        ERROR("Parse url failed, url %s.", url);
         http_client_free(client);
         return NULL;
     }
@@ -60,7 +60,7 @@ int http_connect_server(http_client_t *client)
 {
     client->srv_fd = net_connect_by_host(client->conn_params.host, client->conn_params.port);
     if (client->srv_fd == -1) {
-        diag_err("Connect to http server failed");
+        ERROR("Connect to http server failed");
         return TOY_ERR;
     }
     return TOY_OK;

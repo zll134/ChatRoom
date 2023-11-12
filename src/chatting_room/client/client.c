@@ -28,10 +28,10 @@ void *read_thread_start(void *args)
         char buf[1024];
         int len = read(g_client_fd, buf, sizeof(buf));
         if (len == -1) {
-            diag_err("read error");
+            ERROR("read error");
             return NULL;
         } else if (len == 0) {
-            diag_err("server process closed");
+            ERROR("server process closed");
             return NULL;
         }
 
@@ -45,7 +45,7 @@ int main(int argc, char **argv)
 {
     int g_client_fd = net_connect("127.0.0.1", SERVER_PORT);
     if (g_client_fd == -1) {
-        diag_err("connet tcp failed");
+        ERROR("connet tcp failed");
         return -1;
     }
     /* pthread_create(&g_recv_thread_id, NULL, read_thread_start, NULL);
@@ -54,7 +54,7 @@ int main(int argc, char **argv)
     screen_writeline("Please enter your name: ");
     char name[1024] = {0};
     if (screen_readline(name, sizeof(name)) <= 0) {
-        diag_err("read screen line failed");
+        ERROR("read screen line failed");
         return -1;
     }
 
@@ -67,7 +67,7 @@ int main(int argc, char **argv)
     char ip[32] = {0};
     uint16_t port;
     if (net_get_address(g_client_fd, ip, sizeof(ip), &port) != 0) {
-        diag_err("get address failed");
+        ERROR("get address failed");
         return -1;
     }
 
@@ -79,7 +79,7 @@ int main(int argc, char **argv)
         screen_write_fmtline("> ");
         char buf[1024] = {0};
         if (screen_readline(buf, sizeof(buf)) <= 0) {
-            diag_err("read screen line failed");
+            ERROR("read screen line failed");
             return -1;
         }
 

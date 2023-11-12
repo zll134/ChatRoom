@@ -28,13 +28,13 @@ rbtree_t *rbtree_create(struct rbtree_ops_s *ops)
 {
     rbtree_t *tree = (rbtree_t *)malloc(sizeof(*tree));
     if (tree == NULL) {
-        diag_err("create rbtree failed");
+        ERROR("create rbtree failed");
         return NULL;
     }
     tree->sentinel = (rbtree_node_t *)malloc(sizeof(*tree->sentinel));
     if (tree->sentinel == NULL) {
         free(tree);
-        diag_err("create rbtree sentinel failed");
+        ERROR("create rbtree sentinel failed");
         return NULL;
     }
     rbt_set_color(tree->sentinel, BLACK);
@@ -136,7 +136,7 @@ static rbtree_node_t *rbt_create_node(rbtree_t *tree, void *data, int len)
 {
     rbtree_node_t *node = (rbtree_node_t *)malloc(sizeof(*node));
     if (node == NULL) {
-        diag_err("malloc memory for node failed");
+        ERROR("malloc memory for node failed");
         return NULL;
     }
     node->color = RED;
@@ -149,7 +149,7 @@ int rbtree_insert(rbtree_t *tree, void *data, int len)
 {
     rbtree_node_t *node = rbt_create_node(tree, data, len);
     if (node == NULL) {
-        diag_err("create node error.");
+        ERROR("create node error.");
         return -1;
     }
 
@@ -413,7 +413,7 @@ void rbtree_dump(rbtree_t *tree, rbtree_node_t *node, int depth)
     for (int i = 0; i < depth; i++) {
         space_str[i] = ' ';
     }
-    diag_info("%s%s%s", space_str, str, color);
+    INFO("%s%s%s", space_str, str, color);
 
     rbtree_dump(tree, node->left, depth + 1);
     rbtree_dump(tree, node->right, depth + 1);

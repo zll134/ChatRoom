@@ -28,7 +28,7 @@ event_loop_t *event_create_loop()
     loop->efd = epoll_create(EPOLL_SIZE);
     if (loop->efd <= 0) {
         free(loop);
-        diag_err("create epoll failed");
+        ERROR("create epoll failed");
         return NULL;
     }
 
@@ -64,7 +64,7 @@ void event_run_loop(event_loop_t *loop)
             if (errno == EINTR) {
                 continue;
             }
-            diag_err("epoll wait failed, errno %d", errno);
+            ERROR("epoll wait failed, errno %d", errno);
             return;
         }
 
@@ -97,7 +97,7 @@ int event_add(event_loop_t *loop, int fd, uint32_t mask,
     ev.events = mask;
     ev.data.fd = fd;
     if (epoll_ctl(loop->efd, EPOLL_CTL_ADD, fd, &ev) != 0) {
-        diag_err("epoll add failed");
+        ERROR("epoll add failed");
         return -1;
     }
     return 0;
@@ -111,7 +111,7 @@ int event_del(event_loop_t *loop, int fd)
     rbtree_delete(loop->events, &key);
 
     if (epoll_ctl(loop->efd, EPOLL_CTL_DEL, fd, NULL) != 0) {
-        diag_err("epoll del failed");
+        ERROR("epoll del failed");
         return -1;
     }
     close(fd);

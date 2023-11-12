@@ -119,11 +119,11 @@ int list_delete(list_t *list, list_node_t *node)
 int list_del_head(list_t *list)
 {
     if ((list == NULL) || (list->num <= 0)) {
-        diag_err("list delete node failed.");
+        ERROR("list delete node failed.");
         return -1;
     }
     if (list_delete(list, list->head.next) != 0) {
-        diag_err("list delete failed");
+        ERROR("list delete failed");
         return -1;
     }
     return 0;
@@ -132,11 +132,11 @@ int list_del_head(list_t *list)
 int list_del_tail(list_t *list)
 {
     if ((list == NULL) || (list->num <= 0)) {
-        diag_err("list delete node faile.");
+        ERROR("list delete node faile.");
         return -1;
     }
     if (list_delete(list, list->tail.prev) != 0) {
-        diag_err("list delete failed");
+        ERROR("list delete failed");
         return -1;
     }
     return 0;
@@ -157,7 +157,7 @@ void *list_first(list_t *list)
 void *list_next(list_t *list, void *data)
 {
     if ((list == NULL) || (data == NULL)) {
-        diag_err("list_next: input param is invalid.");
+        ERROR("list_next: input param is invalid.");
         return NULL;
     }
 
