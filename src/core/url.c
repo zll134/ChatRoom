@@ -114,7 +114,7 @@ static int url_get_host_addr(sds_t urlStr, int *start_pos, url_data_t *params)
     if (delim_pos == INVALID_POS) {
         params->host = sds_substr(urlStr, *start_pos, end_pos);
         if (params->host == NULL) {
-            diag_err("[url]Get substr of host failed when delim not exist, "
+            ERROR("[url]Get substr of host failed when delim not exist, "
                      "url: %s, startpos %d, end pos %d.", (char *)urlStr, *start_pos, end_pos);
             return -1;
         }
@@ -123,14 +123,14 @@ static int url_get_host_addr(sds_t urlStr, int *start_pos, url_data_t *params)
     } else {
         params->host = sds_substr(urlStr, *start_pos, delim_pos);
         if (params->host == NULL) {
-            diag_err("[url]Get substr of host failed when delim exist, "
+            ERROR("[url]Get substr of host failed when delim exist, "
                      "url: %s, startpos %d, end pos %d.", (char *)urlStr, *start_pos, end_pos);
             return -1;
         }
 
         sds_t port_str = sds_substr(urlStr, delim_pos, end_pos);
         if (port_str == NULL) {
-            diag_err("[url]Get substr of port failed when delim not exist, "
+            ERROR("[url]Get substr of port failed when delim not exist, "
                      "url: %s, startpos %d, end pos %d.", (char *)urlStr, *start_pos, end_pos);
             return -1;
         }
@@ -287,48 +287,48 @@ int url_parse(const char *urlStr, url_data_t *params)
     int start_pos = 0;
     int ret = url_get_scheme(params->url, &start_pos, params);
     if (ret != 0) {
-        diag_err("[url]Get scheme from url failed, url %s.", (char *)urlStr);
+        ERROR("[url]Get scheme from url failed, url %s.", (char *)urlStr);
         return -1;
     }
 
     ret = url_get_auth(params->url, &start_pos, params);
     if (ret != 0) {
-        diag_err("[url]Get auth from url failed, url %s.", (char *)urlStr);
+        ERROR("[url]Get auth from url failed, url %s.", (char *)urlStr);
         url_free(params);
         return -1;
     }
 
     ret = url_get_host_addr(params->url, &start_pos, params);
     if (ret != 0) {
-        diag_err("[url]Get host from url failed, url %s.", (char *)urlStr);
+        ERROR("[url]Get host from url failed, url %s.", (char *)urlStr);
         url_free(params);
         return -1;
     }
 
     ret = url_get_path(params->url, &start_pos, params);
     if (ret != 0) {
-        diag_err("[url]Get path from url failed, url %s.", (char *)urlStr);
+        ERROR("[url]Get path from url failed, url %s.", (char *)urlStr);
         url_free(params);
         return -1;
     }
 
     ret = url_get_params(params->url, &start_pos, params);
     if (ret != 0) {
-        diag_err("[url]Get params from url failed, url %s.", (char *)urlStr);
+        ERROR("[url]Get params from url failed, url %s.", (char *)urlStr);
         url_free(params);
         return -1;
     }
 
     ret = url_get_query(params->url, &start_pos, params);
     if (ret != 0) {
-        diag_err("[url]Get query from url failed, url %s.", (char *)urlStr);
+        ERROR("[url]Get query from url failed, url %s.", (char *)urlStr);
         url_free(params);
         return -1;
     }
 
     ret = url_get_frag(params->url, &start_pos, params);
     if (ret != 0) {
-        diag_err("[url]Get frag from url failed, url %s.", (char *)urlStr);
+        ERROR("[url]Get frag from url failed, url %s.", (char *)urlStr);
         url_free(params);
         return -1;
     }

@@ -46,7 +46,7 @@ int screen_readline(char *buf, int buf_len)
     while (count < buf_len - 1) {
         char ch;
         if (read(STDIN_FILENO, &ch, 1) <= 0) {
-            diag_err("read char from screen failed");
+            ERROR("read char from screen failed");
             return -1;
         }
 
@@ -81,7 +81,7 @@ int screen_writeline(const char *line)
     while (len > 0) {
         int nwrite = write(STDOUT_FILENO, pos, len);
         if (nwrite <= 0) {
-            diag_err("screen writeline failed");
+            ERROR("screen writeline failed");
             return -1;
         }
         len -= nwrite;

@@ -11,6 +11,11 @@ set (CMAKE_CXX_COMPILER "g++")
 
 add_compile_options(-g)
 
+# add debug mode
+if(DEBUG_MODE)
+add_compile_options(-DDEBUG_MODE)
+endif()
+
 add_subdirectory(src)
 
 if(BUILD_TEST)

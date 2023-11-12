@@ -49,11 +49,11 @@ static void login_msg_proc(int fd, void *buf, int len)
 {
     msg_login_req_t *login_req = (msg_login_req_t *)buf;
     client_t client = {0};
-    diag_info("recv login msg, name %s", login_req->name);
+    INFO("recv login msg, name %s", login_req->name);
     strcpy(client.name, login_req->name);
     msg_login_resp_t login_resp = {0};
     if (list_find(&g_server.clients, &client) != NULL) {
-        diag_info("user is exist.");
+        INFO("user is exist.");
         login_resp.result = LOGIN_USER_EXIST;
         msg_send(fd, MSG_LOGIN, &login_resp, sizeof(login_resp));
         return;
@@ -65,7 +65,7 @@ static void login_msg_proc(int fd, void *buf, int len)
 static void chat_msg_proc(int fd, void *buf, int len)
 {
     msg_chat_req_t *chat_req = (msg_chat_req_t *)buf;
-    diag_info("recv chat msg, name %s, content %s", chat_req->name, chat_req->buf);
+    INFO("recv chat msg, name %s, content %s", chat_req->name, chat_req->buf);
     void *ptr = list_first(&g_server.clients);
     while (ptr != NULL) {
         client_t *client = (client_t *)ptr;
@@ -81,10 +81,10 @@ static void receive_cb(event_loop_t *loop, int fd, uint32_t mask, void *data)
     char buf[1024] = {0};
     int len = read(fd, buf, sizeof(buf));
     if (len == -1) {
-        diag_err("read buff error");
+        ERROR("read buff error");
         return;
     } else if (len == 0) {
-        diag_info("client close fd");
+        INFO("client close fd");
         event_del(loop, fd);
 
         /* 需要从list中删除 */
@@ -92,7 +92,7 @@ static void receive_cb(event_loop_t *loop, int fd, uint32_t mask, void *data)
     }
 
     msg_hdr_t *hdr = (msg_hdr_t *)buf;
-    diag_info("recv msg, msg type %d msg len %d", hdr->type, hdr->len);
+    INFO("recv msg, msg type %d msg len %d", hdr->type, hdr->len);
     switch (hdr->type) {
         case MSG_LOGIN:
             login_msg_proc(fd, hdr + 1, hdr->len);
@@ -108,9 +108,9 @@ static void receive_cb(event_loop_t *loop, int fd, uint32_t mask, void *data)
 static void accept_cb(event_loop_t *loop, int fd, uint32_t mask, void *data)
 {
     int conn_fd = accept(fd, NULL, 0);
-    diag_info("new client connet fd %d connfd %d", fd, conn_fd);
+    INFO("new client connet fd %d connfd %d", fd, conn_fd);
     if (conn_fd < 0) {
-        diag_err("accept fd failed");
+        ERROR("accept fd failed");
         return;
     }
 
@@ -122,12 +122,12 @@ int connect_init(void)
 {
     int lfd = net_create_listener(SERVER_PORT);
     if (lfd <= 0) {
-        diag_err("init socket listener failed");
+        ERROR("init socket listener failed");
         return -1;
     }
 
     net_set_nonblock(lfd);
-    diag_info("init socket listener success. fd %d", lfd);
+    INFO("init socket listener success. fd %d", lfd);
     g_server.loop = event_create_loop();
     event_add(g_server.loop, lfd, EPOLLIN, accept_cb, NULL);
     event_run_loop(g_server.loop);

@@ -18,4 +18,24 @@ void diag_info(const char *fmt, ...);
 /* 错误日志接口 */
 void diag_err(const char *fmt, ...);
 
+#define INFO(args...) \
+    do { \
+        diag_info(args);\
+    } while(0)
+
+#define ERROR(args...) \
+    do { \
+        diag_err(args);\
+    } while(0)
+
+/* 调试日志 */
+#ifdef DEBUG_MODE
+#define TRACE(s, args...) \
+    do { \
+        diag_info("[trace] "s, ## args);\
+    } while(0)
+#else
+#define TRACE(args...)
+#endif
+
 #endif
