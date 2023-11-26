@@ -33,6 +33,10 @@ void integer_free(long_integer_t *integer);
  */
 void integer_shift_left(long_integer_t *integer, uint32_t bits);
 
+void integer_shift_right(long_integer_t *integer, uint32_t bits);
+
+uint8_t integer_get_bit(long_integer_t *integer, uint32_t index);
+
 /** 长字节整数加一
  *  @param: integer: [in] 长整数对象
  */
@@ -55,5 +59,13 @@ void integer_set(long_integer_t *integer, uint32_t val);
  *  @param: integer2: [in] 长整数对象
  */
 bool integer_equal(long_integer_t *integer1, long_integer_t *integer2);
+
+/** 长字节整数赋值
+ *  @param: integer: [in] 长整数对象
+ *  @param: val:     [in] 被赋值的整数
+ *  @return：成功 或者 失败
+ */
+int integer_copy(long_integer_t *integer, long_integer_t *val);
+
 
 #endif

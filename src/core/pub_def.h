@@ -19,7 +19,7 @@
 #define TOY_OK 0      // 成功返回码
 #define TOY_ERR (-1)  // 通用错误码
 
-/* 101~200 为哈希模块错误码 */
+/* 100~199 为哈希模块错误码 */
 #define TOY_ERR_DICT_MALLOC_FAILED              101
 #define TOY_ERR_DICT_INVALID_PARA               102
 #define TOY_ERR_DICT_IS_REHASHING               103
@@ -30,7 +30,7 @@
 #define TOY_ERR_DICT_KEY_NOT_EXIST              108
 #define TOY_ERR_DICT_INVALID_REALSIZE           109
 
-/* 201~300 为压缩模块的错误码 */
+/* 200~299 为压缩模块的错误码 */
 #define TOY_ERR_LZ_LEVEL_INVALID                201
 #define TOY_ERR_LZ_DICT_CREATE_FAIL             202
 #define TOY_ERR_LZ_INVALID_PARA                 203
@@ -39,17 +39,24 @@
 #define TOY_ERR_LZ_RINGBUF_CREATE_FAIL          206
 #define TOY_ERR_LZ_CREATE_DICT_FAIL             207
 
-/* 201~300 为ringbuff的错误码 */
+/* 300~399 为ringbuff的错误码 */
 #define TOY_ERR_RINGBUFF_WRITE_INVALID_PARA     301
 #define TOY_ERR_RINGBUFF_READ_INVALID_PARA      302
 
 
-/* 301~400 为huffman的错误码 */
+/* 400~499 为huffman的错误码 */
+#define TOY_ERR_HUFFMAN_MODULE_BASE             400
 #define TOY_ERR_HUFFMAN_INVALID_PARA            401
 #define TOY_ERR_HUFFMAN_MALLOC_FAILED           402
 #define TOY_ERR_HUFFMAN_NEW_NOSYM_NODE_FAILD    403
 #define TOY_ERR_HUFFMAN_SYMBOL_OVERFLOW         404
 #define TOY_ERR_HUFFMAN_NUMBITS_OVERFLOW        405
 #define TOY_ERR_HUFFMAN_OUTBUF_INSUFFICIET      406
+#define TOY_ERR_HUFFMAN_NEW_BIG_INT             407
+
+/* 500~599 为stream的错误码 */
+#define TOY_ERR_STREAM_MODULE_BASE              500
+
+
 
 #endif

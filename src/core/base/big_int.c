@@ -169,3 +169,10 @@ bool integer_equal(long_integer_t *integer1, long_integer_t *integer2)
 
     return true;
 }
+
+int integer_copy(long_integer_t *integer, long_integer_t *val)
+{
+    uint32_t byte_len = integer->byte_len < val->byte_len ? integer->byte_len : val->byte_len;
+    memcpy(integer->bytes, val->bytes, byte_len * sizeof(uint8_t));
+    return DLR_OK;
+}
