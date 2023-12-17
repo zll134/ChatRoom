@@ -20,11 +20,10 @@
 #define TOY_ERR_HUFFMAN_OUTBUF_INSUFFICIET      (TOY_ERR_HUFFMAN_MODULE_BASE + 5)
 #define TOY_ERR_HUFFMAN_NEW_BIG_INT             (TOY_ERR_HUFFMAN_MODULE_BASE + 6)
 
-
 int huffman_encode(stream_t *in, stream_t *out);
 
 int huffman_decode(stream_t *in, stream_t *out);
 
-int huffman_free_stream(stream_t *strm);
+int huffman_parse(stream_t *encode_strm);
 
 #endif

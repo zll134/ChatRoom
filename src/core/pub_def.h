@@ -20,15 +20,7 @@
 #define TOY_ERR (-1)  // 通用错误码
 
 /* 100~199 为哈希模块错误码 */
-#define TOY_ERR_DICT_MALLOC_FAILED              101
-#define TOY_ERR_DICT_INVALID_PARA               102
-#define TOY_ERR_DICT_IS_REHASHING               103
-#define TOY_ERR_DICT_CONFIG_NULL                104
-#define TOY_ERR_DICT_CALLBACK_NULL              105
-#define TOY_ERR_DICT_PARAM_INVALID              106
-#define TOY_ERR_DICT_KEY_EXIST                  107
-#define TOY_ERR_DICT_KEY_NOT_EXIST              108
-#define TOY_ERR_DICT_INVALID_REALSIZE           109
+#define TOY_ERR_DICT_MODULE_BASE                100
 
 /* 200~299 为压缩模块的错误码 */
 #define TOY_ERR_LZ_LEVEL_INVALID                201
@@ -46,17 +38,9 @@
 
 /* 400~499 为huffman的错误码 */
 #define TOY_ERR_HUFFMAN_MODULE_BASE             400
-#define TOY_ERR_HUFFMAN_INVALID_PARA            401
-#define TOY_ERR_HUFFMAN_MALLOC_FAILED           402
-#define TOY_ERR_HUFFMAN_NEW_NOSYM_NODE_FAILD    403
-#define TOY_ERR_HUFFMAN_SYMBOL_OVERFLOW         404
-#define TOY_ERR_HUFFMAN_NUMBITS_OVERFLOW        405
-#define TOY_ERR_HUFFMAN_OUTBUF_INSUFFICIET      406
-#define TOY_ERR_HUFFMAN_NEW_BIG_INT             407
 
 /* 500~599 为stream的错误码 */
 #define TOY_ERR_STREAM_MODULE_BASE              500
-
 
 
 #endif

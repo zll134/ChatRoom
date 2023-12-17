@@ -7,8 +7,10 @@
 #include <endian.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "log.h"
+#include "pub_def.h"
 /*
 
 一、长整数结构体
@@ -174,5 +176,5 @@ int integer_copy(long_integer_t *integer, long_integer_t *val)
 {
     uint32_t byte_len = integer->byte_len < val->byte_len ? integer->byte_len : val->byte_len;
     memcpy(integer->bytes, val->bytes, byte_len * sizeof(uint8_t));
-    return DLR_OK;
+    return TOY_OK;
 }

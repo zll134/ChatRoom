@@ -3,7 +3,7 @@
  * Description:  单元测试框架
  * create time: 2022.4.17
  ********************************/
-#include "unittest.h"
+#include "unittest_inner.h"
 
 #include <stdio.h>
 #include <stdint.h>
@@ -11,6 +11,8 @@
 #include <stdbool.h>
 #include <stdarg.h>
 #include <string.h>
+
+#include "unittest_print.h"
 
 typedef struct {
     bool case_passed;
@@ -21,19 +23,6 @@ typedef struct {
 } unit_test_ctx_t;
 
 unit_test_ctx_t g_running_ctx = {0};
-
-void unit_print(uint32_t font_color, const char *fmt, ...)
-{
-    va_list ap;
-    va_start(ap, fmt);
-
-    char buf[1024] = {0};
-    vsnprintf(buf, sizeof(buf), fmt, ap);
-
-    printf("\033[40;%dm%s\033[0m", font_color, buf);
-
-    va_end(ap);
-}
 
 void unit_test_suite_runner(unit_test_suite_t *suite)
 {
