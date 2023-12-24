@@ -109,15 +109,8 @@ TEST(big_int_test, test_int_shift_left)
     }
 }
 
-TEST_SUITE_RUNNER(big_int_test)
+int main(int argc, char **argv)
 {
-    RUN_TEST_CASE(big_int_test, test_int_set);
-    RUN_TEST_CASE(big_int_test, test_int_inc);
-    RUN_TEST_CASE(big_int_test, test_int_shift_left);
-}
-
-int main()
-{
-    RUN_TEST_SUITE(big_int_test);
+    TEST_MAIN(argc, argv);
     return 0;
 }

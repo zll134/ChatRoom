@@ -35,13 +35,8 @@ TEST(huffman_test, test_basic_huffman)
 {
 }
 
-TEST_SUITE_RUNNER(huffman_test)
+int main(int argc, char **argv)
 {
-    RUN_TEST_CASE(huffman_test, test_basic_huffman);
-}
-
-int main()
-{
-    RUN_TEST_SUITE(huffman_test);
+    TEST_MAIN(argc, argv);
     return 0;
 }

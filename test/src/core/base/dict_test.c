@@ -93,14 +93,8 @@ TEST(dict_test, batch_add_and_delete_expect_ok)
     TEST_INFO("aver search len: %d", dict_get_average_search_len(g_dict));
 }
 
-TEST_SUITE_RUNNER(dict_test)
+int main(int argc, char **argv)
 {
-    RUN_TEST_CASE(dict_test, basic_add_and_delete_expect_ok);
-    RUN_TEST_CASE(dict_test, batch_add_and_delete_expect_ok);
-}
-
-int main()
-{
-    RUN_TEST_SUITE(dict_test);
+    TEST_MAIN(argc, argv);
     return 0;
 }

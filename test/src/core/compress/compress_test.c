@@ -130,16 +130,8 @@ TEST(compress_test, Compress_and_decompress_When_multi_match)
     test_assert_compress_and_decompress(input, input_len);
 }
 
-TEST_SUITE_RUNNER(compress_test)
+int main(int argc, char **argv)
 {
-    RUN_TEST_CASE(compress_test, Compress_and_decompress_When_match_is_short);
-    RUN_TEST_CASE(compress_test, Compress_and_decompress_When_match_is_long);
-    RUN_TEST_CASE(compress_test, Compress_and_decompress_When_string_is_long);
-    RUN_TEST_CASE(compress_test, Compress_and_decompress_When_multi_match);
-}
-
-int main()
-{
-    RUN_TEST_SUITE(compress_test);
+    TEST_MAIN(argc, argv);
     return 0;
 }

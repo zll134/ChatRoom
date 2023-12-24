@@ -32,7 +32,7 @@ stream_t *stream_create(char *data, uint32_t size);
 /** 释放字节流
  *  @param: strm: [in] 字节流对象
  */
-int stream_free(stream_t *strm);
+void stream_free(stream_t *strm);
 
 /** 字节流写bit值
  *  @param: strm: [in] 字节流对象

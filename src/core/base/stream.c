@@ -7,6 +7,10 @@
 
 #include "stream.h"
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "pub_def.h"
 
 #define BYTE_BITS 8
@@ -32,7 +36,7 @@ stream_t *stream_create(char *data, uint32_t size)
     return strm;
 }
 
-int stream_free(stream_t *strm)
+void stream_free(stream_t *strm)
 {
     if (strm == NULL) {
         return;
@@ -46,6 +50,7 @@ int stream_free(stream_t *strm)
     }
 
     free(strm);
+
 }
 
 int stream_write_bit(stream_t *strm, uint8_t bit)

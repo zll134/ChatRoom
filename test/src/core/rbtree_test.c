@@ -93,13 +93,8 @@ TEST(rbtree_test, test_random_insert_and_delete)
     ASSERT_TRUE(rbtree_get_node_num(tree) == 0);
 }
 
-TEST_SUITE_RUNNER(rbtree_test)
+int main(int argc, char **argv)
 {
-    RUN_TEST_CASE(rbtree_test, test_random_insert_and_delete);
-}
-
-int main()
-{
-    RUN_TEST_SUITE(rbtree_test);
+    TEST_MAIN(argc, argv);
     return 0;
 }
