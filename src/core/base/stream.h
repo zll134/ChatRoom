@@ -17,8 +17,9 @@
 typedef struct {
     uint8_t *data;      // 数据流
     uint32_t size;      // 数据流长度
-    uint32_t pos;       // 数据流偏移
-    uint8_t bit_pos;    // bit偏移
+    uint32_t capacity;  // 数据流容量
+    uint32_t pos;       // 数据流动态偏移
+    uint8_t bit_pos;    // 数据流bit动态偏移
 } stream_t;
 
 

@@ -9,11 +9,13 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
 
 #include "pub_def.h"
 #include "bit_op.h"
 #include "stream.h"
 #include "big_int.h"
+#include "log.h"
 /*
 1. huffman 压缩格式
     格式：
@@ -85,6 +87,11 @@ typedef struct {
     huffman_code_t sym_codes[MAX_SYMBOL_NUM]; /* 第一个元素是根节点 */
 } huffman_code_table_t;
 
+/* huffman 编码数据流头 */
+typedef struct {
+    uint32_t size; // 原数据大小
+} huffman_header_t;
+
 static huffman_node_t *huffman_create_sym_node(uint8_t symbol)
 {
     huffman_node_t *node = calloc(1, sizeof(*node));
@@ -94,7 +101,7 @@ static huffman_node_t *huffman_create_sym_node(uint8_t symbol)
     node->is_leaf = true;
     node->parent = NULL;
     node->symbol = symbol;
-    node->count = 0;
+    node->count = 1;
     node->depth = 0;
     return node;
 }
@@ -112,15 +119,15 @@ static void huffman_free_sym_nodes(huffman_node_t *sym_node)
 
     if (sym_node->zero != NULL) {
         huffman_free_sym_nodes(sym_node->zero);
-        free(sym_node->zero);
         sym_node->zero = NULL;
     }
 
     if (sym_node->one != NULL) {
         huffman_free_sym_nodes(sym_node->one);
-        free(sym_node->one);
         sym_node->one = NULL;
     }
+
+    free(sym_node);
 }
 
 /* 释放huffman树 */
@@ -154,6 +161,7 @@ static int huffman_calc_symbol_frequencies(const stream_t *in, huffman_tree_t *t
         tree->sym_nodes[symbol] = huffman_create_sym_node(symbol);
         if (tree->sym_nodes[symbol] == NULL) {
             huffman_free_tree(tree);
+            ERROR("[huffman] Failed to create sym node");
             return TOY_ERR_HUFFMAN_MALLOC_FAILED;
         }
     }
@@ -218,6 +226,8 @@ static int huffman_build_sym_tree(const stream_t *in, huffman_tree_t *tree)
     uint32_t total_count = 0;
 	for (int i = 0; i < MAX_SYMBOL_NUM; i++) {
         if (sym_nodes[i] != NULL) {
+            TRACE("[huffman] Symbol frequent, sym %u, count %u.",
+                i, sym_nodes[i]->count);
             total_count++;
         }
     }
@@ -284,11 +294,13 @@ static void huffman_bl_free(huffman_bl_t *bl, uint32_t len)
 static int huffman_get_bl_counts(const huffman_code_t *codes, uint32_t codes_len,
     huffman_bl_t **bl_count, uint32_t *len)
 {
-    huffman_bl_t *bl = calloc(MAX_BITS_LEN + 1, sizeof(bl_count));
+    huffman_bl_t *bl = calloc(MAX_BITS_LEN + 1, sizeof(huffman_bl_t));
     if (bl == NULL) {
+        ERROR("[huffman] Failed to malloc for bl");
         return TOY_ERR_HUFFMAN_MALLOC_FAILED;
     }
 
+    /* 统计长度为n的字符的个数 */
     for (int i = 0; i < codes_len; i++) {
         if (codes[i].numbits == 0) {
             continue;
@@ -299,7 +311,7 @@ static int huffman_get_bl_counts(const huffman_code_t *codes, uint32_t codes_len
         bl[codes[i].numbits].count++;
     }
 
-    for (int i = 1; i < MAX_BITS_LEN + 1; i++) {
+    for (int i = 0; i < MAX_BITS_LEN + 1; i++) {
         bl[i].start_code.numbits = i;
 
         long_integer_t *bit_val = integer_new(0, MAX_BYTE_LEN);
@@ -308,6 +320,10 @@ static int huffman_get_bl_counts(const huffman_code_t *codes, uint32_t codes_len
             return TOY_ERR_HUFFMAN_NEW_BIG_INT;
         }
 
+        /* 0为初始化 */
+        if (i == 0) {
+            continue;
+        }
         bl[i].start_code.bit_val = bit_val;
     
         integer_copy(bl[i].start_code.bit_val, bl[i - 1].start_code.bit_val);
@@ -330,11 +346,15 @@ static void huffman_free_sym_codes_int(huffman_code_t *codes, uint32_t len)
     }
 }
 
-static int huffman_build_sym_bits(const huffman_bl_t *bl_counts, uint32_t bl_len,
+static int huffman_compute_sym_bits(const huffman_bl_t *bl_counts, uint32_t bl_len,
     huffman_code_t *codes, uint32_t codes_len)
 {
     for (int i = 0; i < codes_len; i++) {
         uint32_t numbits = codes[i].numbits;
+        if (numbits == 0) {
+            continue;
+        }
+
         const huffman_code_t *start_code = &bl_counts[numbits].start_code;
         codes[i].bit_val = integer_new(0, MAX_BYTE_LEN);
         if (!codes[i].bit_val) {
@@ -349,7 +369,7 @@ static int huffman_build_sym_bits(const huffman_bl_t *bl_counts, uint32_t bl_len
     return TOY_OK;
 }
 
-static int huffman_build_code_str(huffman_code_t *codes, uint32_t len)
+static int huffman_convert_code_str(huffman_code_t *codes, uint32_t len)
 {
     for (int i = 0; i < len; i++) {
         huffman_code_t *code = &codes[i];
@@ -360,29 +380,34 @@ static int huffman_build_code_str(huffman_code_t *codes, uint32_t len)
             integer_shift_right(code->bit_val, 1);
             numbits--;
         }
+        TRACE("[huffman] Build code str, sym %u, str %s.", i, code->bits_str);
     }
+    return TOY_OK;
 }
 
-static int huffman_build_sym_code(huffman_code_t *codes, uint32_t len)
+static int huffman_compute_sym_code(huffman_code_t *codes, uint32_t len)
 {
     /* 获取长度为N的字符的数量 */
     huffman_bl_t *bl_count = NULL;
     uint32_t bl_len;
     int ret = huffman_get_bl_counts(codes, len, &bl_count, &bl_len);
     if (ret != TOY_OK) {
+        ERROR("[huffman] Failed to get bl counts, ret %d.", ret);
         return ret;
     }
 
     /* 根据bl_count构建字符编码 */
-    ret = huffman_build_sym_bits(bl_count, bl_len, codes, len);
+    ret = huffman_compute_sym_bits(bl_count, bl_len, codes, len);
     huffman_bl_free(bl_count, bl_len);
     if (ret != TOY_OK) {
+        ERROR("[huffman] Failed to comute sym bits, ret %d.", ret);
         return ret;
     }
 
     /* 转换为字符串 */
-    ret = huffman_build_code_str(codes, len);
+    ret = huffman_convert_code_str(codes, len);
     if (ret != TOY_OK) {
+        ERROR("[huffman] Failed to convert sym code str, ret %d.", ret);
         return ret;
     }
 
@@ -414,6 +439,7 @@ static int huffman_build_code_table(stream_t *in,
     huffman_tree_t tree = {0};
     int ret = huffman_build_tree(in, &tree);
     if (ret != TOY_OK) {
+        ERROR("[huffman] Failed to build huffman tree, ret %d.", ret);
         return ret;
     }
 
@@ -421,12 +447,14 @@ static int huffman_build_code_table(stream_t *in,
     ret = huffman_get_sym_code_numbits(tree.sym_nodes[0], codes->sym_codes, MAX_SYMBOL_NUM);
     huffman_free_tree(&tree);
     if (ret != TOY_OK) {
+        ERROR("[huffman] Failed to get sym code numbits, ret %d.", ret);
         return ret;
     }
 
     /* 根据编码长度计算符号的编码 */
-    ret = huffman_build_sym_code(codes->sym_codes, MAX_SYMBOL_NUM);
+    ret = huffman_compute_sym_code(codes->sym_codes, MAX_SYMBOL_NUM);
     if (ret != TOY_OK) {
+        ERROR("[huffman] Failed to compute sym code, ret %d.", ret);
         return ret;
     }
 
@@ -437,6 +465,11 @@ static int huffman_build_code_table(stream_t *in,
 static int huffman_write_code_table(huffman_code_t *codes, uint32_t codes_len,
     stream_t *out)
 {
+    out->pos = sizeof(huffman_header_t);
+    if (out->pos >= out->capacity) {
+        return TOY_ERR_HUFFMAN_OUTBUF_INSUFFICIET;
+    }
+
     int i = 0; 
     while (i < codes_len) {
         int j = i;
@@ -444,18 +477,22 @@ static int huffman_write_code_table(huffman_code_t *codes, uint32_t codes_len,
         while (j < codes_len && codes[j].numbits == codes[i].numbits) {
             j++;
         }
-        if (out->pos >= out->size - 2) { // code编码最多占用2字节
+        if (out->pos >= out->capacity - 2) { // code编码最多占用2字节
             return TOY_ERR_HUFFMAN_OUTBUF_INSUFFICIET;
         }
         out->data[out->pos] = codes[i].numbits;
         if (j == i + 1) {
             out->data[out->pos] |= 0x80; // 1000 0000
             out->pos++;
+            TRACE("[huffman] Write code table, pos %u, numbits %u, len %u, val %u.",
+                out->pos - 1, codes[i].numbits, 1, out->data[out->pos - 1]);
         } else {
             out->data[out->pos] &= 0x7f; // 0111 1111
             out->pos++;
             out->data[out->pos] = j - i;
             out->pos++;
+            TRACE("[huffman] Write code table, pos %u, numbits %u, len %u, val %u.",
+                out->pos - 2, codes[i].numbits, j - i, out->data[out->pos - 2]);
         }
         i = j;
     }
@@ -464,13 +501,14 @@ static int huffman_write_code_table(huffman_code_t *codes, uint32_t codes_len,
 
 static int huffman_write_header(stream_t *in, stream_t *out)
 {
-    if (out->pos >= out->size - 4) { // code编码最多占用2字节
+    if (out->capacity < sizeof(huffman_header_t)) { // code编码最多占用2字节
         return TOY_ERR_HUFFMAN_OUTBUF_INSUFFICIET;
     }
 
-    uint32_t *cur_data = (uint32_t *)&out->data[out->pos];
-    *cur_data = in->size;
-    out->pos += sizeof(uint32_t);
+    huffman_header_t *hdr = (huffman_header_t *)&out->data[0];
+    hdr->size = in->size;
+
+    TRACE("[huffman] Write header, size %u", hdr->size);
     return TOY_OK;
 }
 
@@ -483,6 +521,7 @@ static int huffman_write_syms(stream_t *in, stream_t *out,
         for (int j = 0; j < code->numbits; j++) {
             int ret = stream_write_bit(out, code->bits_str[j] - '0');
             if (ret != TOY_OK) {
+                ERROR("[huffman] Failed to write bit to stream, ret %d.", ret);
                 return ret;
             }
         }
@@ -494,21 +533,24 @@ static int huffman_write_syms(stream_t *in, stream_t *out,
 static int huffman_write_data(stream_t *in, stream_t *out,
     huffman_code_table_t *codes)
 {
-    // 写编码头部
-    int ret = huffman_write_header(in, out);
-    if (ret != TOY_OK) {
-        return ret;
-    }
-
     // 写码表
-    ret = huffman_write_code_table(codes->sym_codes, MAX_SYMBOL_NUM, out);
+    int ret = huffman_write_code_table(codes->sym_codes, MAX_SYMBOL_NUM, out);
     if (ret != TOY_OK) {
+        ERROR("[huffman] Failed to write code table, ret %d.", ret);
         return ret;
     }
 
     // 写字符数据
     ret = huffman_write_syms(in, out, codes);
     if (ret != TOY_OK) {
+        ERROR("[huffman] Failed to write syms, ret %d.", ret);
+        return ret;
+    }
+
+    // 写编码头部，头部在最前面
+    ret = huffman_write_header(in, out);
+    if (ret != TOY_OK) {
+        ERROR("[huffman] Failed to write header, ret %d.", ret);
         return ret;
     }
     return TOY_OK;
@@ -522,6 +564,7 @@ int huffman_encode(stream_t *in, stream_t *out)
 
     huffman_code_table_t *codes = calloc(1, sizeof(*codes));
     if (codes == NULL) {
+        ERROR("[huffman] Failed to malloc for codes");
         return TOY_ERR_HUFFMAN_MALLOC_FAILED;
     }
 
@@ -529,14 +572,18 @@ int huffman_encode(stream_t *in, stream_t *out)
     int ret = huffman_build_code_table(in, codes);
     if (ret != TOY_OK) {
         free(codes);
+        ERROR("[huffman] Failed to build code table, ret %d.", ret);
         return ret;
     }
 
     /* 写入编码表*/
-    out->size = in->size;
-    out->data = calloc(1, out->size);
+    out->pos = 0;
+    out->bit_pos = 0;
+    out->capacity = in->size;
+    out->data = calloc(1, out->capacity);
     if (out->data == NULL) {
         free(codes);
+        ERROR("[huffman] Failed to malloc for encodeout");
         return TOY_ERR_HUFFMAN_MALLOC_FAILED;
     }
 
@@ -544,16 +591,22 @@ int huffman_encode(stream_t *in, stream_t *out)
     ret = huffman_write_data(in, out, codes);
     free(codes);
     if (ret != TOY_OK) {
+        free(out->data);
+        ERROR("[huffman] Write data failed, ret %d.", ret);
         return ret;
     }
+    out->size = out->pos;
 
     return TOY_OK;
 }
 
 static int huffman_read_header(stream_t *in, uint32_t *data_size)
 {
-    *data_size = *(uint32_t *)in->data;
-    in->pos += sizeof(uint32_t);
+    huffman_header_t *hdr = (huffman_header_t *)in->data;
+    *data_size = hdr->size;
+    in->pos += sizeof(huffman_header_t);
+    TRACE("[huffman] Read header, data_size %u, pos %u, size %u.",
+            *data_size, in->pos, in->size);
     return TOY_OK;
 }
 
@@ -561,17 +614,31 @@ static int huffman_rebuild_numbits(stream_t *in, huffman_code_table_t *codes)
 {
     int i = 0;
     while (i < MAX_SYMBOL_NUM) {
+        if (in->pos >= in->size) {
+            ERROR("[huffman] Pos overflow when rebuild numbits, pos %u, size %u",
+                in->pos, in->size);
+            return TOY_ERR_HUFFMAN_INDEX_OVERFLOW;
+        }
+
         uint8_t data = in->data[in->pos];
         in->pos++;
 
         uint8_t numbits = (data & 0x7f);
-        uint8_t sym_num = 1;
+        uint8_t numbits_len = 1;
         if ((data & 0x80) == 0) { // 1000 0000
-            sym_num = in->data[in->pos];
+            if (in->pos >= in->size) {
+                ERROR("[huffman] Pos overflow when getting len num, pos %u, size %u",
+                    in->pos, in->size);
+                return TOY_ERR_HUFFMAN_INDEX_OVERFLOW;
+            }
+
+            numbits_len = in->data[in->pos];
             in->pos++;
         }
-
-        for (int j = 0; j < sym_num; j++) {
+        TRACE("[huffman] Read code table, pos %u, numbits %u, len %u, val %u.",
+                numbits_len == 1 ? in->pos - 1 : in->pos - 2, numbits,
+                numbits_len, data);
+        for (int j = 0; j < numbits_len; j++) {
             codes->sym_codes[i].numbits = numbits;
             i++;
         }
@@ -587,18 +654,20 @@ static int huffman_add_symbits_to_tree(huffman_code_t *code, uint8_t sym,
     while (j < code->numbits) {
         char bit = code->bits_str[j];
 
-        if (bit = '0') {
+        if (bit == '0') {
             if (cur_node->zero == NULL) {
-                cur_node->zero = calloc(1, sizeof(huffman_code_t));
-                if (cur_node->zero != NULL) {
+                cur_node->zero = calloc(1, sizeof(huffman_node_t));
+                if (cur_node->zero == NULL) {
+                    ERROR("[huffman] Failed to malloc for zero node, errno %d.", errno);
                     return TOY_ERR_HUFFMAN_MALLOC_FAILED;
                 }
             }
             cur_node = cur_node->zero;
         } else {
             if (cur_node->one == NULL) {
-                cur_node->one = calloc(1, sizeof(huffman_code_t));
-                if (cur_node->one != NULL) {
+                cur_node->one = calloc(1, sizeof(huffman_node_t));
+                if (cur_node->one == NULL) {
+                    ERROR("[huffman] Failed to malloc one node, errno %d.", errno);
                     return TOY_ERR_HUFFMAN_MALLOC_FAILED;
                 }
             }
@@ -621,6 +690,7 @@ static int huffman_rebuild_sym_tree(huffman_code_t *codes, uint32_t len,
 {
     tree->sym_nodes[0] = calloc(1, sizeof(huffman_code_t));
     if (tree->sym_nodes[0] == NULL) {
+        ERROR("[huffman] Failed to malloc for tree root node.");
         return TOY_ERR_HUFFMAN_MALLOC_FAILED;
     }
 
@@ -642,6 +712,7 @@ static int huffman_rebuild_tree(stream_t *in, huffman_tree_t *tree)
 {
     huffman_code_table_t *codes = calloc(1, sizeof(*codes));
     if (codes == NULL) {
+        ERROR("[huffman] Failed to malloc for rebuild code table.");
         return TOY_ERR_HUFFMAN_MALLOC_FAILED;
     }
 
@@ -651,7 +722,7 @@ static int huffman_rebuild_tree(stream_t *in, huffman_tree_t *tree)
         return ret;
     }
 
-    ret = huffman_build_sym_code(codes->sym_codes, MAX_SYMBOL_NUM);
+    ret = huffman_compute_sym_code(codes->sym_codes, MAX_SYMBOL_NUM);
     if (ret != TOY_OK) {
         free(codes);
         return ret;
@@ -690,6 +761,9 @@ int huffman_decode(stream_t *in, stream_t *out)
         return TOY_ERR_HUFFMAN_INVALID_PARA;
     }
 
+    in->pos = 0;
+    in->bit_pos = 0;
+
     uint32_t data_size;
     huffman_read_header(in, &data_size);
 
@@ -700,11 +774,13 @@ int huffman_decode(stream_t *in, stream_t *out)
     }
 
     out->data = calloc(1, data_size);
-    if (out->data != TOY_OK) {
+    if (out->data == NULL) {
+        ERROR("[huffman] Failed to malloc for decode out.");
         return TOY_ERR_HUFFMAN_MALLOC_FAILED;
     }
 
     out->size = data_size;
+    out->capacity = out->size;
 
     ret = huffman_read_data(in, out, &tree);
     if (ret != TOY_OK) {

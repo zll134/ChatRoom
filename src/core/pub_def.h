@@ -14,6 +14,7 @@
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 #define LONG_MAX 0x7fffffff
+#define MAX_UINT8 0xff
 
 /* 通用错误码定义 */
 #define TOY_OK 0      // 成功返回码
@@ -42,5 +43,7 @@
 /* 500~599 为stream的错误码 */
 #define TOY_ERR_STREAM_MODULE_BASE              500
 
+/* 600~699 为stream的错误码 */
+#define TOY_ERR_BIG_INT_MODULE_BASE             600
 
 #endif

@@ -12,7 +12,7 @@
 #include <string.h>
 
 #include "pub_def.h"
-
+#include "log.h"
 #define BYTE_BITS 8
 
 stream_t *stream_create(char *data, uint32_t size)
@@ -57,20 +57,22 @@ int stream_write_bit(stream_t *strm, uint8_t bit)
 {
     uint32_t byte_pos = strm->pos;
     uint8_t bit_pos = strm->bit_pos;
-    if (byte_pos >= strm->size) {
+    if (byte_pos >= strm->capacity) {
+        ERROR("[stream] Failed to write bit due to overflow, off %u, size %u.",
+            byte_pos, strm->capacity);
         return TOY_ERR_STREAM_WRITE_OVER_FLOW;
     }
 
     if (bit == 0) {
-        strm->data[bit_pos] &= (~(1 << bit_pos));
+        strm->data[strm->pos] &= (~(1 << bit_pos));
     } else {
-        strm->data[bit_pos] |= (1 << bit_pos);
+        strm->data[strm->pos] |= (1 << bit_pos);
     }
     strm->bit_pos++;
 
     if (strm->bit_pos >= BYTE_BITS) {
         strm->pos += 1;
-        strm->bit_pos = strm->bit_pos % BYTE_BITS;
+        strm->bit_pos = (strm->bit_pos % BYTE_BITS);
     }
 
     return TOY_OK;

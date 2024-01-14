@@ -8,6 +8,9 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "pub_def.h"
+
+#define TOY_ERR_BIG_INT_INVALID_PARA (TOY_ERR_BIG_INT_MODULE_BASE + 0)
 
 typedef struct {
     uint8_t *bytes;
@@ -33,8 +36,17 @@ void integer_free(long_integer_t *integer);
  */
 void integer_shift_left(long_integer_t *integer, uint32_t bits);
 
+/** 长字节整数向又偏移。对应操作符 >> 。
+ *  @param: integer: [in] 长整数对象
+ *  @param: bits: [in] 偏移的比特数
+ */
 void integer_shift_right(long_integer_t *integer, uint32_t bits);
 
+/** 获取长字节整数第n位比特值
+ *  @param: integer: [in] 长整数对象
+ *  @param: index: [in] 第n位比特值
+ *  @return bit值 0/1 
+ */
 uint8_t integer_get_bit(long_integer_t *integer, uint32_t index);
 
 /** 长字节整数加一
