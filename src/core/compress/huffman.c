@@ -518,6 +518,8 @@ static int huffman_write_syms(stream_t *in, stream_t *out,
     for (uint32_t i = 0; i < in->size; i++) {
         uint8_t sym = in->data[i];
         huffman_code_t *code = &codes->sym_codes[sym];
+        TRACE("Write new sym, %d, codestr %s, bytepos %d, bitpos %d.",
+            sym, code->bits_str, out->pos, out->bit_pos);
         for (int j = 0; j < code->numbits; j++) {
             int ret = stream_write_bit(out, code->bits_str[j] - '0');
             if (ret != TOY_OK) {
@@ -579,7 +581,7 @@ int huffman_encode(stream_t *in, stream_t *out)
     /* 写入编码表*/
     out->pos = 0;
     out->bit_pos = 0;
-    out->capacity = in->size;
+    out->capacity = in->size + sizeof(huffman_header_t) + MAX_SYMBOL_NUM;
     out->data = calloc(1, out->capacity);
     if (out->data == NULL) {
         free(codes);
@@ -595,7 +597,12 @@ int huffman_encode(stream_t *in, stream_t *out)
         ERROR("[huffman] Write data failed, ret %d.", ret);
         return ret;
     }
-    out->size = out->pos;
+
+    if (out->bit_pos == 0) {
+        out->size = out->pos;
+    } else {
+        out->size = out->pos + 1;
+    }
 
     return TOY_OK;
 }
@@ -742,12 +749,19 @@ static int huffman_read_data(stream_t *in, stream_t *out, huffman_tree_t *tree)
 { 
     while (out->pos < out->size) {
         huffman_node_t *cur_node = tree->sym_nodes[0];
-
+        TRACE("Read new sym start: bytepos %u, bitpos %u, size %u.",
+            in->pos, in->bit_pos, in->size);
         while (!cur_node->is_leaf) {
-            int bit = stream_read_bit(in);
-            cur_node = bit == 0 ? cur_node->zero : cur_node->one;
-        }
+            int bit;
+            int ret = stream_read_bit(in, &bit);
+            if (ret != TOY_OK) {
+                return ret;
+            }
 
+            cur_node = bit == 0 ? cur_node->zero : cur_node->one;
+            TRACE("    new bit: %d ", bit);
+        }
+        TRACE("Read new sym end, sym %u.", cur_node->symbol);
         out->data[out->pos] = cur_node->symbol;
         out->pos++;
     }

@@ -44,8 +44,8 @@ int stream_write_bit(stream_t *strm, uint8_t bit);
 
 /** 字节流写bit值
  *  @param: strm: [in] 字节流对象
- *  @return：bit值，0 or 1
+ *  @param：bit值，[out] 0 or 1
  */
-int stream_read_bit(stream_t *strm);
+int stream_read_bit(stream_t *strm, int *bit);
 
 #endif

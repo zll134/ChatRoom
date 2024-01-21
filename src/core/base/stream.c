@@ -78,24 +78,26 @@ int stream_write_bit(stream_t *strm, uint8_t bit)
     return TOY_OK;
 }
 
-int stream_read_bit(stream_t *strm)
+int stream_read_bit(stream_t *strm, int *bit)
 {
     uint32_t byte_pos = strm->pos;
     uint8_t bit_pos = strm->bit_pos;
     if (byte_pos >= strm->size) {
+        ERROR("Stream read overflow, byte_pos %u, size %u.",
+            byte_pos, strm->size);
         return TOY_ERR_STREAM_READ_OVER_FLOW;
     }
 
-    int bit = 0;
+    *bit = 0;
     if (strm->data[strm->pos] & (1 << bit_pos)) {
-        bit = 1;
+        *bit = 1;
     }
 
     strm->bit_pos++;
     if (strm->bit_pos >= BYTE_BITS) {
         strm->pos += 1;
-        strm->bit_pos = strm->bit_pos % BYTE_BITS;
+        strm->bit_pos = (strm->bit_pos % BYTE_BITS);
     }
 
-    return bit;
+    return TOY_OK;
 }

@@ -62,11 +62,39 @@ static void test_huffman_encode_and_decode(uint8_t *input, uint32_t input_len)
     free(rebuild.data);
 }
 
-TEST(huffman_test, test_basic_huffman)
+/**
+ *  用例1: 小长度的字符串huffman压缩
+ *      压缩优化：21 -> 17 => 21 -> 16
+ */
+TEST(huffman_test, test_short_match_str)
+{
+    uint8_t *input = (uint8_t *)g_short_match_str;
+    uint32_t input_len = strlen(g_short_match_str) + 1;
+
+    test_huffman_encode_and_decode(input, input_len);
+}
+
+/**
+ *  用例2: 大长度的字符串huffman压缩
+ *      压缩优化： 243 -> 188
+ */
+TEST(huffman_test, test_long_match_str)
 {
     uint8_t *in = (uint8_t *)g_long_match_str;
     uint32_t in_len = strlen(g_long_match_str) + 1;
     test_huffman_encode_and_decode(in, in_len);
+}
+
+/**
+ *  用例3: 真实字符串huffman压缩。
+ *      压缩优化： 7966 -> 4768
+ */
+TEST(huffman_test, test_real_str)
+{
+    uint8_t *input = (uint8_t *)g_long_str;
+    uint32_t input_len = strlen(g_long_str) + 1;
+
+    test_huffman_encode_and_decode(input, input_len);
 }
 
 int main(int argc, char **argv)
