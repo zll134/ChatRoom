@@ -25,7 +25,7 @@
  *  @attention 出参out->data需要由调用者释放
  *
  *  @param: in: [in] 输入字节流
- *  @param: out: [out] 输出字节流;
+ *  @param: out: [out] 输出字节流; 需要调用者释放out->data
  *  @return: TOY_OK表示压缩成功；失败返回对应错误码
  */
 int huffman_encode(stream_t *in, stream_t *out);

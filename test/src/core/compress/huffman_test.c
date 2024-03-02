@@ -15,6 +15,7 @@
 
 /* 测试用字符串 */
 #include "test_compress_string.c"
+#include "huffman_dataset.c"
 
 TEST_SETUP(huffman_test)
 {
@@ -93,6 +94,17 @@ TEST(huffman_test, test_real_str)
 {
     uint8_t *input = (uint8_t *)g_long_str;
     uint32_t input_len = strlen(g_long_str) + 1;
+
+    test_huffman_encode_and_decode(input, input_len);
+}
+
+/**
+ *  用例4: huffman测试数据1测试。
+ */
+TEST(huffman_test, test_huffman_dataset_case1)
+{
+    uint8_t *input = (uint8_t *)g_huffman_test_data1;
+    uint32_t input_len = ARRAY_SIZE(g_huffman_test_data1);
 
     test_huffman_encode_and_decode(input, input_len);
 }
