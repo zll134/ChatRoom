@@ -37,7 +37,7 @@ static void crm_log(int severity, const char *buf)
         default:
             break;
     }
-    (void)fprintf(stderr, "[%s] %s\n", severity_str, buf);
+    (void)fprintf(stdout, "[%s] %s\n", severity_str, buf);
 }
 
 void diag_info(const char *fmt, ...)

@@ -1,6 +1,7 @@
 set(include_dir ${CMAKE_CURRENT_SOURCE_DIR}/
                 ${CMAKE_CURRENT_SOURCE_DIR}/base
                 ${CMAKE_CURRENT_SOURCE_DIR}/test_frame
+                ${CMAKE_CURRENT_SOURCE_DIR}/test_frame/include
                 ${CMAKE_CURRENT_SOURCE_DIR}/compress)
 
 INCLUDE_DIRECTORIES(${include_dir})

@@ -9,6 +9,17 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+/* DICT模块错误码，基址为100 */
+#define TOY_ERR_DICT_MALLOC_FAILED              (TOY_ERR_HUFFMAN_MODULE_BASE + 1)
+#define TOY_ERR_DICT_INVALID_PARA               (TOY_ERR_HUFFMAN_MODULE_BASE + 2)
+#define TOY_ERR_DICT_IS_REHASHING               (TOY_ERR_HUFFMAN_MODULE_BASE + 3)
+#define TOY_ERR_DICT_CONFIG_NULL                (TOY_ERR_HUFFMAN_MODULE_BASE + 4)
+#define TOY_ERR_DICT_CALLBACK_NULL              (TOY_ERR_HUFFMAN_MODULE_BASE + 5)
+#define TOY_ERR_DICT_PARAM_INVALID              (TOY_ERR_HUFFMAN_MODULE_BASE + 6)
+#define TOY_ERR_DICT_KEY_EXIST                  (TOY_ERR_HUFFMAN_MODULE_BASE + 7)
+#define TOY_ERR_DICT_KEY_NOT_EXIST              (TOY_ERR_HUFFMAN_MODULE_BASE + 8)
+#define TOY_ERR_DICT_INVALID_REALSIZE           (TOY_ERR_HUFFMAN_MODULE_BASE + 9)
+
 typedef struct tag_dict_entry {
     void *record;
     uint32_t record_size;

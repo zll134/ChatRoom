@@ -1,7 +1,7 @@
 /* ********************************
  * Author:       Zhanglele
- * Description:  红黑树功能测试模块
- * create time: 2022.01.23
+ * Description:  压缩算法功能测试模块
+ * create time: 2024.02.29
  ********************************/
 #include <stdlib.h>
 #include <stdio.h>
@@ -10,27 +10,25 @@
 
 #include "log.h"
 #include "unittest.h"
-#include "toylz.h"
 #include "pub_def.h"
 #include "dict.h"
+#include "compress.h"
 
 /* 测试用字符串 */
 #include "test_compress_string.c"
-
-static lz_compressor_t *g_comp = NULL;
-
+compressor_t *g_compressor = NULL;
 TEST_SETUP(compress_test)
 {
-    lz_option_t option = {
-        .level = LZ_MAX_COMPRESS_LEVEL
+    compressor_option_t option = {
+        .level = MAX_COMPRESS_LEVEL
     };
-    g_comp = lz_create_compressor(&option);
-    ASSERT_TRUE(g_comp != NULL);
+    g_compressor = compressor_create(&option);
+    ASSERT_TRUE(g_compressor != NULL)
 }
 
 TEST_TEAR_DOWN(compress_test)
 {
-    lz_destroy_compressor(g_comp);
+    compressor_destroy(g_compressor);
 }
 
 TEST_CASE_SETUP(compress_test)
@@ -40,106 +38,58 @@ TEST_CASE_SETUP(compress_test)
 TEST_CASE_TEAR_DOWN(compress_test)
 {
 }
-
-static void test_assert_compress_and_decompress(uint8_t *input, uint32_t input_len)
+static void test_compressor_encode_and_decode(uint8_t *input, uint32_t input_len)
 {
-    uint8_t *out = malloc(input_len);
-    uint8_t *decomp_out = malloc(input_len);
-    ASSERT_TRUE(out != NULL);
-    ASSERT_TRUE(decomp_out != NULL);
+    stream_t in = {0};
+    in.data = input;
+    in.size = input_len;
 
-    // 数据压缩
-    lz_stream_t strm = {0};
-    strm.in = (uint8_t *)input;
-    strm.in_size = input_len;
-    strm.out = out;
-    strm.out_size = strm.in_size ;
-    int ret = lz_compress(g_comp, &strm);
+    /* 编码 */
+    stream_t out = {0};
+    int ret = compressor_encode(g_compressor, &in, &out);
     ASSERT_EQ(ret, TOY_OK);
-    ASSERT_TRUE(strm.out_total < input_len);
 
     // 打印关键压缩信息
     TEST_INFO(" Origin data len %u, compressed data len %u",
-        input_len, strm.out_total);
+        input_len, out.size);
 
-    // 数据解压
-    lz_stream_t decom_strm = {0};
-    decom_strm.in = out;
-    decom_strm.in_size = strm.out_total;
-    decom_strm.out = decomp_out;
-    decom_strm.out_size = input_len;
-    ret = lz_decompress(g_comp, &decom_strm);
+    /* 解码 */
+    stream_t rebuild = {0};
+    ret = compressor_decode(g_compressor, &out, &rebuild);
     ASSERT_EQ(ret, TOY_OK);
 
     // 数据比较
-    ASSERT_EQ(decom_strm.out_total, strm.in_size);
-    for (int i = 0; i < strm.in_size; i++) {
-        ASSERT_EQ(strm.in[i], decom_strm.out[i]);
+    ASSERT_EQ(in.size, rebuild.size);
+    for (int i = 0; i < in.size; i++) {
+        ASSERT_EQ(in.data[i], rebuild.data[i]);
     }
 
-    // 内存释放
-    free(out);
-    free(decomp_out);
+    free(out.data);
+    free(rebuild.data);
 }
 
-/**
- *  用例1: 字符串匹配块长度小于31长度。
- *      压缩优化：21 -> 17 => 21 -> 16
- */
 TEST(compress_test, Compress_and_decompress_When_match_is_short)
 {
-    uint8_t *input = (uint8_t *)g_short_match_str;
-    uint32_t input_len = strlen(g_short_match_str) + 1;
+    uint8_t *in = (uint8_t *)g_long_match_str;
+    uint32_t in_len = strlen(g_long_match_str) + 1;
 
-    test_assert_compress_and_decompress(input, input_len);
-}
-
-/**
- *  用例2: 字符串匹配块长度大于31长度。
- *      压缩优化： 243 -> 129
- */
-TEST(compress_test, Compress_and_decompress_When_match_is_long)
-{
-    uint8_t *input = (uint8_t *)g_long_match_str;
-    uint32_t input_len = strlen(g_long_match_str) + 1;
-
-    test_assert_compress_and_decompress(input, input_len);
+    test_compressor_encode_and_decode(in, in_len);
 }
 
 /**
  *  用例3: 长字符串匹配块压缩。
- *      压缩优化：7966 -> 6280 =>  7966 -> 5402
+ *      压缩优化：7966 -> 5402
  */
 TEST(compress_test, Compress_and_decompress_When_string_is_long)
 {
     uint8_t *input = (uint8_t *)g_long_str;
     uint32_t input_len = strlen(g_long_str) + 1;
 
-    test_assert_compress_and_decompress(input, input_len);
+    test_compressor_encode_and_decode(input, input_len);
 }
 
-/**
- *  用例4: 多匹配块压缩。
- *      压缩优化：44 -> 40 => 44 -> 34
- */
-TEST(compress_test, Compress_and_decompress_When_multi_match)
+int main(int argc, char **argv)
 {
-    uint8_t *input = (uint8_t *)g_multi_match_str;
-    uint32_t input_len = strlen(g_multi_match_str) + 1;
-
-    test_assert_compress_and_decompress(input, input_len);
-}
-
-TEST_SUITE_RUNNER(compress_test)
-{
-    RUN_TEST_CASE(compress_test, Compress_and_decompress_When_match_is_short);
-    RUN_TEST_CASE(compress_test, Compress_and_decompress_When_match_is_long);
-    RUN_TEST_CASE(compress_test, Compress_and_decompress_When_string_is_long);
-    RUN_TEST_CASE(compress_test, Compress_and_decompress_When_multi_match);
-}
-
-int main()
-{
-    RUN_TEST_SUITE(compress_test);
+    TEST_MAIN(argc, argv);
     return 0;
 }

@@ -1,6 +1,7 @@
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/src/core
                     ${PROJECT_SOURCE_DIR}/src/core/base
                     ${PROJECT_SOURCE_DIR}/src/core/test_frame
+                    ${PROJECT_SOURCE_DIR}/src/core/test_frame/include
                     ${PROJECT_SOURCE_DIR}/src/core/compress
                     ${PROJECT_SOURCE_DIR}/test/test_data)
 

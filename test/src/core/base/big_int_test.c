@@ -109,15 +109,48 @@ TEST(big_int_test, test_int_shift_left)
     }
 }
 
-TEST_SUITE_RUNNER(big_int_test)
+/**
+ *  用例4: 测试整数>>操作
+ */
+TEST(big_int_test, test_int_shift_right)
 {
-    RUN_TEST_CASE(big_int_test, test_int_set);
-    RUN_TEST_CASE(big_int_test, test_int_inc);
-    RUN_TEST_CASE(big_int_test, test_int_shift_left);
+    // 随机生成测试整数
+    uint32_t vals[] = {0xbf, 0x800e, 0xfd1ffe, 0x12345678}; 
+    uint32_t bits[] = {0, 5, 8, 10, 16, 19, 24, 27, 32, 40};
+    int case_idx = 0;
+    for (int i = 0; i < ARRAY_SIZE(vals); i++) {
+        for (int j = 0; j < ARRAY_SIZE(bits); j++) {
+            uint32_t val = vals[i];
+            integer_set(g_integer, val);
+
+            TRACE("case %d: val %u, bit %u", case_idx, val, bits[j]);
+            // 长整数向右偏移
+            val = val >> bits[j];
+            integer_shift_right(g_integer, bits[j]);
+
+            integer_assert(g_integer, val);
+            case_idx++;
+        } 
+    }
 }
 
-int main()
+/**
+ *  用例5: 测试整数获取bit位
+ */
+TEST(big_int_test, test_int_get_bit)
 {
-    RUN_TEST_SUITE(big_int_test);
+    // 待测试随机整数
+    uint32_t val = 0x76EC5249; // 0111 0110 1110 1100 0101 0010 0100 1001
+    uint32_t indexes[] = {0, 3, 4, 10, 20, 27, 30};
+    uint32_t bits[] = {1, 1, 0, 0, 0, 0, 1};
+    integer_set(g_integer, val);
+    for (int i = 0; i < ARRAY_SIZE(indexes); i++) {
+        ASSERT_EQ(integer_get_bit(g_integer, indexes[i]), bits[i]);
+    }
+}
+
+int main(int argc, char **argv)
+{
+    TEST_MAIN(argc, argv);
     return 0;
 }

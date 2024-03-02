@@ -69,15 +69,8 @@ TEST(ringbuff_test, test_ringbuff_When_data_size_long)
     test_assert_ringbuff(data, ARRAY_SIZE(data));
 }
 
-
-TEST_SUITE_RUNNER(ringbuff_test)
+int main(int argc, char **argv)
 {
-    RUN_TEST_CASE(ringbuff_test, test_ringbuff_When_data_size_short);
-    RUN_TEST_CASE(ringbuff_test, test_ringbuff_When_data_size_long);
-}
-
-int main()
-{
-    RUN_TEST_SUITE(ringbuff_test);
+    TEST_MAIN(argc, argv);
     return 0;
 }

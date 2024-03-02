@@ -61,13 +61,8 @@ TEST(list_test, test_basic_list)
     list_destroy(list);
 }
 
-TEST_SUITE_RUNNER(list_test)
+int main(int argc, char **argv)
 {
-    RUN_TEST_CASE(list_test, test_basic_list);
-}
-
-int main()
-{
-    RUN_TEST_SUITE(list_test);
+    TEST_MAIN(argc, argv);
     return 0;
 }

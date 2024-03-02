@@ -8,6 +8,9 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "pub_def.h"
+
+#define TOY_ERR_BIG_INT_INVALID_PARA (TOY_ERR_BIG_INT_MODULE_BASE + 0)
 
 typedef struct {
     uint8_t *bytes;
@@ -33,6 +36,19 @@ void integer_free(long_integer_t *integer);
  */
 void integer_shift_left(long_integer_t *integer, uint32_t bits);
 
+/** 长字节整数向又偏移。对应操作符 >> 。
+ *  @param: integer: [in] 长整数对象
+ *  @param: bits: [in] 偏移的比特数
+ */
+void integer_shift_right(long_integer_t *integer, uint32_t bits);
+
+/** 获取长字节整数第n位比特值
+ *  @param: integer: [in] 长整数对象
+ *  @param: index: [in] 第n位比特值
+ *  @return bit值 0/1 
+ */
+uint8_t integer_get_bit(long_integer_t *integer, uint32_t index);
+
 /** 长字节整数加一
  *  @param: integer: [in] 长整数对象
  */
@@ -55,5 +71,13 @@ void integer_set(long_integer_t *integer, uint32_t val);
  *  @param: integer2: [in] 长整数对象
  */
 bool integer_equal(long_integer_t *integer1, long_integer_t *integer2);
+
+/** 长字节整数赋值
+ *  @param: integer: [in] 长整数对象
+ *  @param: val:     [in] 被赋值的整数
+ *  @return：成功 或者 失败
+ */
+int integer_copy(long_integer_t *integer, long_integer_t *val);
+
 
 #endif
