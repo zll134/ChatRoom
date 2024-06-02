@@ -9,8 +9,9 @@ aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/. src)
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/base base_src)
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/compress comperss_src)
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/test_frame test_frame_src)
+aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/coroutine co_src)
 
-add_library(toy_core ${src} ${base_src} ${comperss_src} ${test_frame_src})
+add_library(toy_core ${src} ${base_src} ${comperss_src} ${test_frame_src} ${co_src})
 target_link_libraries(toy_core PRIVATE pthread)
 
 #add_subdirectory(toy_client)

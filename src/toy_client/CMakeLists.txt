@@ -1,5 +1,6 @@
-set(include_dir ${CMAKE_CURRENT_SOURCE_DIR}/../core
-                ${CMAKE_CURRENT_SOURCE_DIR}/.
+set(include_dir ${CMAKE_CURRENT_SOURCE_DIR}/.
+                ${CMAKE_CURRENT_SOURCE_DIR}/../core
+                ${CMAKE_CURRENT_SOURCE_DIR}/../core/base
 )
 INCLUDE_DIRECTORIES(${include_dir})
 
